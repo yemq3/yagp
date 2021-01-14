@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
-	"encoding/json"
+	// "encoding/json"
 	"image"
-    "image/color"
+	"image/color"
 
 	// "compress/gzip"
 	"flag"
@@ -51,8 +53,8 @@ type Camera struct {
 	latestFrameID  int
 	newFrameNotify chan int
 
-	weight int
-	height int
+	weight    int
+	height    int
 	frameRate int
 }
 
@@ -82,29 +84,34 @@ func interruptHandler(cancel context.CancelFunc, ws *websocket.Conn) {
 }
 
 func (camera *Camera) replyHandler(ctx context.Context, ws *websocket.Conn) {
-	window2 := gocv.NewWindow("reply")
-	defer window2.Close()
+	window := gocv.NewWindow("reply")
+	defer window.Close()
 	red := color.RGBA{255, 0, 0, 0}
 	for {
-		reply := Reply{}
-		err := ws.ReadJSON(&reply)
-		if err != nil {
-			log.Errorln(err)
+		select {
+		case <-ctx.Done():
 			return
+		default:
+			reply := Reply{}
+			err := ws.ReadJSON(&reply)
+			if err != nil {
+				log.Errorln(err)
+				return
+			}
+			log.Infof("recv: %v", reply)
+			img := camera.history[reply.FrameID]
+			height := img.Size()[0]
+			weight := img.Size()[1]
+			for _, box := range reply.Boxes {
+				rect := image.Rectangle{}
+				rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
+				rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
+				gocv.Rectangle(&img, rect, red, 3)
+			}
+			// 这个window的size不对，不知道怎么搞的= =
+			window.IMShow(img)
+			window.WaitKey(10)
 		}
-		log.Infof("recv: %v", reply)
-		img := camera.history[reply.FrameID]
-		height := img.Size()[0]
-		weight := img.Size()[1]
-		for _, box := range reply.Boxes {
-			rect := image.Rectangle{}
-			rect.Min = image.Point{int(box.X1*float64(weight)), int(box.Y1*float64(height))}
-			rect.Max = image.Point{int(box.X2*float64(weight)), int(box.Y2*float64(height))}
-			gocv.Rectangle(&img, rect, red, 3)
-		}
-		// 这个window的size不对，不知道怎么搞的= =
-		window2.IMShow(img)
-		window2.WaitKey(10)
 	}
 }
 
@@ -119,10 +126,21 @@ func (camera *Camera) display(ctx context.Context) {
 			window.IMShow(img)
 			window.WaitKey(10)
 		case <-ctx.Done():
-			log.Infoln("encode interrupt")
+			log.Infoln("display interrupt")
 			return
 		}
 	}
+}
+
+func gzipCompress(b []byte) ([]byte, error){
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	if _, err := zw.Write(b); err != nil {
+		log.Errorln(err)
+		return []byte{}, err
+	}
+	zw.Flush()
+	return buf.Bytes(), nil
 }
 
 func (camera *Camera) send(ctx context.Context, ws *websocket.Conn) {
@@ -135,13 +153,14 @@ func (camera *Camera) send(ctx context.Context, ws *websocket.Conn) {
 			currFrameID++
 			frame.Frame = img
 
-			b, err := json.Marshal(frame)
-			if err != nil {
-				log.Errorln(err)
-				return
-			}
-			// err = ws.WriteJSON(frame)
-			err = ws.WriteMessage(websocket.BinaryMessage, b)
+			// b, err := json.Marshal(frame)
+			// if err != nil {
+			// 	log.Errorln(err)
+			// 	return
+			// }
+
+			err := ws.WriteJSON(frame)
+			// err = ws.WriteMessage(websocket.BinaryMessage, img)
 			if err != nil {
 				log.Errorln(err)
 				return
@@ -179,7 +198,7 @@ func (camera *Camera) getFrame(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infoln("encode interrupt")
+			log.Infoln("getFrame interrupt")
 			return
 		default:
 			camera.camera.Read(&img)

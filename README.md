@@ -10,7 +10,6 @@
 │   ├── go.mod
 │   └── go.sum
 └── sanic                               server端代码
-    ├── 1.py                            之前的代码，别理
     ├── app                    	        
     │   └── yolov4                      https://github.com/Tianxiaomo/pytorch-YOLOv4修改得来
     │       ├── __init__.py             可以在这修改是否使用GPU，使用完整模型还是tiny

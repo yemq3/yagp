@@ -1,14 +1,24 @@
 from sanic import Sanic
 from sanic.response import json
 from sanic.websocket import WebSocketProtocol
+from sanic_gzip import Compress
 from app.yolov4 import *
 import cv2
 import numpy as np
 import time
 import json
 import base64
+import logging
 
 app = Sanic("server")
+# compress = Compress()
+
+logger = logging.getLogger(__name__)
+logger.setLevel(level=logging.DEBUG)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 def readb64(data):
    nparr = np.fromstring(base64.b64decode(data), np.uint8)
@@ -16,22 +26,26 @@ def readb64(data):
    return img
 
 @app.websocket("/")
+# @compress.compress()
 async def test(request, ws):
     while True:
         data = await ws.recv()
-        print(len(data))
 
+        start = time.time()
         frame = json.loads(data)
-        print(frame['FrameID'])
+        logger.info("Received a new frame, Size: %d, FrameID: %d", len(data), frame['FrameID'])
 
         # nparr = np.frombuffer(data, np.uint8)
         # img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         img = readb64(frame['Frame'])
+        logger.info("FrameID: %d, Decode Time: %f", frame['FrameID'], time.time()-start)
 
         sized = cv2.resize(img, (darknet.width, darknet.height))
         sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
         
+        start = time.time()
         boxes = do_detect(darknet, sized, 0.4, 0.6, USE_CUDA)
+        logger.info("FrameID: %d, Detect Time: %f", frame['FrameID'], time.time()-start)
         boxes = np.array(boxes[0]).tolist()
 
         for i in range(len(boxes)):
