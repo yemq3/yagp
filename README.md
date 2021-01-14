@@ -43,7 +43,7 @@ cd yagp
 
 ```
 cd sanic
-pip install -r requirement.txt
+pip install sanic
 python main.py
 ```
 
@@ -54,3 +54,9 @@ cd client
 go run client.go
 ```
 
+## TODO
+
+- [ ] 历史帧到达一定数量后自动删除
+- [ ] gzip压缩
+- [ ] 更细致的日志信息
+- [ ] 对网络情况的自适应

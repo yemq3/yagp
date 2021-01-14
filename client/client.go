@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
-	// "encoding/json"
+	"encoding/json"
+	"image"
+    "image/color"
+
+	// "compress/gzip"
 	"flag"
 	"net/url"
 	"os"
@@ -15,10 +19,12 @@ import (
 
 // Reply ...
 type Reply struct {
+	FrameID  int
 	Boxes    []Box
 	SendTime float64
 }
 
+// Box ...
 type Box struct {
 	X1      float64
 	Y1      float64
@@ -29,23 +35,31 @@ type Box struct {
 	name    string
 }
 
+// Frame ...
 type Frame struct {
 	FrameID int
 	Frame   []byte
 }
 
+// Camera ...
 type Camera struct {
-	camera        *gocv.VideoCapture
-	encodeChannel chan gocv.Mat
-	sendChannel   chan []byte
-	history       map[int]gocv.Mat // 存之前的图像
-	encodeQuality int
+	camera         *gocv.VideoCapture
+	encodeChannel  chan gocv.Mat
+	sendChannel    chan []byte
+	history        map[int]gocv.Mat // 存之前的图像
+	encodeQuality  int
+	latestFrameID  int
+	newFrameNotify chan int
+
+	weight int
+	height int
+	frameRate int
 }
 
 var addr = flag.String("addr", "127.0.0.1:8000", "http service address")
 var currFrameID = 0
 
-// 中断不了这程序= =，只能重开terminal
+// 有时候会中断不了这程序= =，只能重开terminal
 func interruptHandler(cancel context.CancelFunc, ws *websocket.Conn) {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
@@ -67,9 +81,10 @@ func interruptHandler(cancel context.CancelFunc, ws *websocket.Conn) {
 	}
 }
 
-func replyHandler(ctx context.Context, ws *websocket.Conn) {
+func (camera *Camera) replyHandler(ctx context.Context, ws *websocket.Conn) {
 	window2 := gocv.NewWindow("reply")
 	defer window2.Close()
+	red := color.RGBA{255, 0, 0, 0}
 	for {
 		reply := Reply{}
 		err := ws.ReadJSON(&reply)
@@ -78,7 +93,35 @@ func replyHandler(ctx context.Context, ws *websocket.Conn) {
 			return
 		}
 		log.Infof("recv: %v", reply)
-		// gocv.Rectangle()
+		img := camera.history[reply.FrameID]
+		height := img.Size()[0]
+		weight := img.Size()[1]
+		for _, box := range reply.Boxes {
+			rect := image.Rectangle{}
+			rect.Min = image.Point{int(box.X1*float64(weight)), int(box.Y1*float64(height))}
+			rect.Max = image.Point{int(box.X2*float64(weight)), int(box.Y2*float64(height))}
+			gocv.Rectangle(&img, rect, red, 3)
+		}
+		// 这个window的size不对，不知道怎么搞的= =
+		window2.IMShow(img)
+		window2.WaitKey(10)
+	}
+}
+
+func (camera *Camera) display(ctx context.Context) {
+	window := gocv.NewWindow("camera")
+	defer window.Close()
+
+	for {
+		select {
+		case frameID := <-camera.newFrameNotify:
+			img := camera.history[frameID]
+			window.IMShow(img)
+			window.WaitKey(10)
+		case <-ctx.Done():
+			log.Infoln("encode interrupt")
+			return
+		}
 	}
 }
 
@@ -92,19 +135,17 @@ func (camera *Camera) send(ctx context.Context, ws *websocket.Conn) {
 			currFrameID++
 			frame.Frame = img
 
-			// b, err := json.Marshal(frame)
-			// if err != nil {
-			// 	log.Errorln(err)
-			// 	return
-			// }
-			// err := ws.WriteJSON(frame)
-			err := ws.WriteMessage(websocket.BinaryMessage, img)
-			log.Infoln(img)
+			b, err := json.Marshal(frame)
 			if err != nil {
 				log.Errorln(err)
 				return
 			}
-			return
+			// err = ws.WriteJSON(frame)
+			err = ws.WriteMessage(websocket.BinaryMessage, b)
+			if err != nil {
+				log.Errorln(err)
+				return
+			}
 		case <-ctx.Done():
 			log.Infoln("send interrupt")
 			return
@@ -128,6 +169,28 @@ func (camera *Camera) encode(ctx context.Context) {
 		case <-ctx.Done():
 			log.Infoln("encode interrupt")
 			return
+		}
+	}
+}
+
+func (camera *Camera) getFrame(ctx context.Context) {
+	img := gocv.NewMat()
+	defer img.Close()
+	for {
+		select {
+		case <-ctx.Done():
+			log.Infoln("encode interrupt")
+			return
+		default:
+			camera.camera.Read(&img)
+			camera.latestFrameID++
+			camera.history[camera.latestFrameID] = img
+			go func(img gocv.Mat) {
+				camera.encodeChannel <- img
+			}(img)
+			go func(frameID int) {
+				camera.newFrameNotify <- frameID
+			}(camera.latestFrameID)
 		}
 	}
 }
@@ -158,35 +221,30 @@ func main() {
 	c.Set(gocv.VideoCaptureFrameHeight, 600)
 	c.Set(gocv.VideoCaptureFPS, 24)
 	defer c.Close()
-
-	window := gocv.NewWindow("camera")
-	defer window.Close()
-
-	img := gocv.NewMat()
-	defer img.Close()
 	// 初始化摄像头以及显示所需的东西
 
 	camera := Camera{}
 	camera.camera = c
 	camera.encodeChannel = make(chan gocv.Mat)
 	camera.sendChannel = make(chan []byte)
+	camera.newFrameNotify = make(chan int)
+	camera.history = make(map[int]gocv.Mat)
 	camera.encodeQuality = 75
+	camera.latestFrameID = -1
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	go camera.getFrame(ctx)
 	go camera.encode(ctx)
 	go camera.send(ctx, ws)
-	go replyHandler(ctx, ws)
+	go camera.display(ctx)
+	go camera.replyHandler(ctx, ws)
 	go interruptHandler(cancel, ws)
 
 	for {
-		camera.camera.Read(&img)
-		go func(img gocv.Mat) {
-			camera.encodeChannel <- img
-		}(img)
-		window.IMShow(img)
-		if window.WaitKey(1) >= 0 {
-			break
+		select {
+		case <-ctx.Done():
+			return
 		}
 	}
 }

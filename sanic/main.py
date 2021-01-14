@@ -22,18 +22,11 @@ async def test(request, ws):
         print(len(data))
 
         frame = json.loads(data)
-        # print(frame)
+        print(frame['FrameID'])
 
-        # print(frame['Frame'])
-
-        # nparr = np.frombuffer(frame['Frame'].encode(), np.uint8)
-        # print(nparr[-1])
         # nparr = np.frombuffer(data, np.uint8)
-        # print(nparr[-1])
-        # print(nparr.shape)
         # img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         img = readb64(frame['Frame'])
-        # print(img)
 
         sized = cv2.resize(img, (darknet.width, darknet.height))
         sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
