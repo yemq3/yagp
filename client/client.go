@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	// "encoding/json"
 	"image"
 	"image/color"
 
-	// "compress/gzip"
 	"flag"
 	"net/url"
 	"os"
@@ -35,27 +33,6 @@ type Box struct {
 	Unknown float64
 	Conf    float64
 	name    string
-}
-
-// Frame ...
-type Frame struct {
-	FrameID int
-	Frame   []byte
-}
-
-// Camera ...
-type Camera struct {
-	camera         *gocv.VideoCapture
-	encodeChannel  chan gocv.Mat
-	sendChannel    chan []byte
-	history        map[int]gocv.Mat // 存之前的图像
-	encodeQuality  int
-	latestFrameID  int
-	newFrameNotify chan int
-
-	weight    int
-	height    int
-	frameRate int
 }
 
 var addr = flag.String("addr", "127.0.0.1:8000", "http service address")
@@ -132,7 +109,7 @@ func (camera *Camera) display(ctx context.Context) {
 	}
 }
 
-func gzipCompress(b []byte) ([]byte, error){
+func gzipCompress(b []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
 	if _, err := zw.Write(b); err != nil {
@@ -153,14 +130,13 @@ func (camera *Camera) send(ctx context.Context, ws *websocket.Conn) {
 			currFrameID++
 			frame.Frame = img
 
+			err := ws.WriteJSON(frame)
 			// b, err := json.Marshal(frame)
 			// if err != nil {
 			// 	log.Errorln(err)
 			// 	return
 			// }
-
-			err := ws.WriteJSON(frame)
-			// err = ws.WriteMessage(websocket.BinaryMessage, img)
+			// err = ws.WriteMessage(websocket.BinaryMessage, b)
 			if err != nil {
 				log.Errorln(err)
 				return
@@ -222,12 +198,10 @@ func main() {
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/"}
 	log.Infof("connecting to %s", u.String())
 
-	ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Errorln(err)
-		return
-	}
-	defer ws.Close()
+	network := Network{}
+	network.serverAddr = u
+	network.SendChannel = make(chan []byte)
+	go network.run()
 	// websocket连接
 
 	// 初始化摄像头以及显示所需的东西

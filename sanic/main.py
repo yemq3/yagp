@@ -11,7 +11,7 @@ import base64
 import logging
 
 app = Sanic("server")
-# compress = Compress()
+compress = Compress()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
@@ -26,7 +26,7 @@ def readb64(data):
    return img
 
 @app.websocket("/")
-# @compress.compress()
+@compress.compress()
 async def test(request, ws):
     while True:
         data = await ws.recv()
