@@ -6,9 +6,14 @@
 .
 ├── README.md
 ├── client                              client端代码
+│   ├── camera.go
 │   ├── client.go
+│   ├── displayer.go
+│   ├── encoder.go
 │   ├── go.mod
-│   └── go.sum
+│   ├── go.sum
+│   ├── network.go
+│   ├── persister.go
 └── sanic                               server端代码
     ├── app                    	        
     │   └── yolov4                      https://github.com/Tianxiaomo/pytorch-YOLOv4修改得来
@@ -19,10 +24,8 @@
     │       └── weight
     │           ├── download.sh         这里下载权重之后应该就能跑了
     ├── main.py                         
-    └── test                            以前试图拿python做进程池+协程的失败尝试，别理  
-        ├── 1.py
-        └── ws.py
 ```
+
 
 ## Prerequisites
 
@@ -50,7 +53,7 @@ python main.py
 
 ```
 cd client
-go run client.go
+go run .
 ```
 
 ## TODO

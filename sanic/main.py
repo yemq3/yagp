@@ -62,11 +62,11 @@ async def test(request, ws):
                 'Conf': boxes[i][5],
                 'Name': boxes[i][6],
             })
-        
+
         response = {
             'FrameID': frame["FrameID"],
             'Boxes': formatBoxes,
-            'SendTime': time.time()
+            'SendTime': int(time.time())
         }
 
         await ws.send(json.dumps(response))
