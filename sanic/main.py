@@ -66,10 +66,10 @@ async def test(request, ws):
         response = {
             'FrameID': frame["FrameID"],
             'Boxes': formatBoxes,
-            'SendTime': int(time.time())
+            'SendTime': int(time.time()*1000000000)
         }
 
         await ws.send(json.dumps(response))
 
 if __name__ == "__main__":
-    app.run(protocol=WebSocketProtocol)
+    app.run(host="0.0.0.0", protocol=WebSocketProtocol)

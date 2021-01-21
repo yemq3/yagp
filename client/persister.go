@@ -1,6 +1,10 @@
 package main
 
-import log "github.com/sirupsen/logrus"
+import (
+	"time"
+
+	log "github.com/sirupsen/logrus"
+)
 
 // DetectionResult ...
 type DetectionResult struct {
@@ -28,6 +32,7 @@ func (persister *Persister) persistResponse(response Response) {
 	detectionResult := persister.readPersist(response.FrameID)
 	detectionResult.Response = response
 	persister.history[response.FrameID] = detectionResult
+	log.Infof("use time %v", (time.Now().UnixNano()-detectionResult.Frame.Timestamp))
 	go func(detectionResult DetectionResult) {
 		persister.NewResponseNotify <- detectionResult
 	}(detectionResult)

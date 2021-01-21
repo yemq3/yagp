@@ -80,7 +80,7 @@ func (camera *Camera) getFrame(filterFunc func(gocv.Mat) bool) {
 			frame := Frame{}
 			frame.FrameID = camera.latestFrameID
 			frame.Frame = img
-			frame.Timestamp = time.Now().Unix()
+			frame.Timestamp = time.Now().UnixNano()
 			go func(frame Frame) {
 				camera.persister.persistFrame(frame)
 			}(frame)
