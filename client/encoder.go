@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+	
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 )
@@ -39,7 +41,9 @@ func (encoder *Encoder) run() {
 		case frame := <-encoder.EncodeChannel:
 			log.Debugf("get a new image to encode")
 			img := frame.Frame
+			start := time.Now().UnixNano()
 			buffer, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, img, []int{gocv.IMWriteJpegQuality, encoder.encodeQuality})
+			log.Infof("encode use time %v", (time.Now().UnixNano()-start))
 			if err != nil {
 				log.Errorln(err)
 				return

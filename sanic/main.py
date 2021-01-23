@@ -72,4 +72,4 @@ async def test(request, ws):
         await ws.send(json.dumps(response))
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", protocol=WebSocketProtocol)
+    app.run(host="0.0.0.0", port=12345, protocol=WebSocketProtocol)
