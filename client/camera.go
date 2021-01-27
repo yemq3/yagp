@@ -8,31 +8,28 @@ import (
 	"gocv.io/x/gocv"
 )
 
-// FilterFunc ...
-type FilterFunc func(gocv.Mat) bool
-
 // Frame ...
 type Frame struct {
 	FrameID   int
 	Frame     gocv.Mat
 	Timestamp int64
+	isDetect  bool
 }
 
 // Camera ...
 type Camera struct {
 	camera        *gocv.VideoCapture
-	encodeChannel chan Frame
+	filterChannel chan Frame
 	history       map[int]Frame // 存之前的图像
 	latestFrameID int
 	wg            sync.WaitGroup
-	persister     Persister
 
 	// weight    int
 	// height    int
 	// frameRate int
 }
 
-func (camera *Camera) init(weight float64, height float64, frameRate float64, encodeChannel chan Frame, persister Persister) error {
+func (camera *Camera) init(weight float64, height float64, frameRate float64, filterChannel chan Frame) error {
 	log.Infoln("Camera Init")
 	c, err := gocv.VideoCaptureDevice(0)
 	if err != nil {
@@ -45,29 +42,24 @@ func (camera *Camera) init(weight float64, height float64, frameRate float64, en
 	c.Set(gocv.VideoCaptureFPS, frameRate)
 	camera.camera = c
 
-	camera.encodeChannel = encodeChannel
+	camera.filterChannel = filterChannel
 	camera.latestFrameID = -1
-	camera.persister = persister
 	camera.wg = sync.WaitGroup{}
 
 	return nil
 }
 
-func (camera *Camera) run(filterFunc FilterFunc) {
+func (camera *Camera) run() {
 	defer camera.camera.Close()
 
 	camera.wg.Add(1)
 
-	go camera.getFrame(filterFunc)
+	go camera.getFrame()
 
 	camera.wg.Wait()
 }
 
-func defaultFilterFunc(img gocv.Mat) bool {
-	return true
-}
-
-func (camera *Camera) getFrame(filterFunc func(gocv.Mat) bool) {
+func (camera *Camera) getFrame() {
 	img := gocv.NewMat()
 	defer img.Close()
 	defer camera.wg.Done()
@@ -81,15 +73,10 @@ func (camera *Camera) getFrame(filterFunc func(gocv.Mat) bool) {
 			frame.FrameID = camera.latestFrameID
 			frame.Frame = img
 			frame.Timestamp = time.Now().UnixNano()
-			go func(frame Frame) {
-				camera.persister.persistFrame(frame)
-			}(frame)
 
-			if filterFunc(img) {
-				go func(frame Frame) {
-					camera.encodeChannel <- frame
-				}(frame)
-			}
+			go func(frame Frame) {
+				camera.filterChannel <- frame
+			}(frame)
 		}
 	}
 }

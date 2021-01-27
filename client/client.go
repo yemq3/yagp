@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var addr = flag.String("addr", "127.0.0.1:8000", "http service address")
+var addr = flag.String("addr", "127.0.0.1:12345", "websocket server address")
 
 const (
 	EncodeQuality int     = 75  // jpeg压缩质量
@@ -51,18 +51,42 @@ func main() {
 
 	// 初始化Encoder
 	encoder := Encoder{}
-	if err := encoder.init(EncodeQuality, network.SendChannel); err != nil {
+	if err := encoder.init(EncodeQuality, network.NetworkChannel); err != nil {
 		return
 	}
 	go encoder.run()
 	// 初始化Encoder
 
-	// 初始化摄像头
-	camera := Camera{}
-	if err := camera.init(FrameWidth, FrameHeight, FrameRate, encoder.EncodeChannel, persister); err != nil {
+	// 初始化Tracker
+	tracker := Tracker{}
+	if err := tracker.init(persister); err != nil{
 		return
 	}
-	camera.run(defaultFilterFunc)
+	go tracker.run()
+	// 初始化Tracker
+
+	// 初始化Processer
+	controler := Controller{}
+	if err := controler.init(encoder.EncoderChannel, tracker.TrackerChannel); err != nil {
+		return
+	}
+	go controler.run()
+	// 初始化Processer
+
+	// 初始化Filter
+	filter := Filter{}
+	if err := filter.init(defaultFilterFunc, controler.ControllerChannel, persister); err != nil {
+		return
+	}
+	go filter.run()
+	// 初始化Filter
+
+	// 初始化摄像头
+	camera := Camera{}
+	if err := camera.init(FrameWidth, FrameHeight, FrameRate, filter.FilterChannel); err != nil {
+		return
+	}
+	go camera.run()
 	// 初始化摄像头
 
 	interrupt := make(chan os.Signal, 1)

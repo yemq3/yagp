@@ -12,10 +12,10 @@ import (
 
 // Network ...
 type Network struct {
-	serverAddr  url.URL
-	conn        *websocket.Conn
-	SendChannel chan EncodedFrame
-	persister   Persister
+	serverAddr     url.URL
+	conn           *websocket.Conn
+	NetworkChannel chan EncodedFrame
+	persister      Persister
 	// enableCompression bool
 }
 
@@ -86,14 +86,14 @@ func (network *Network) init(addr url.URL, persister Persister) error {
 	}
 
 	network.serverAddr = addr
-	network.SendChannel = make(chan EncodedFrame)
+	network.NetworkChannel = make(chan EncodedFrame)
 	network.conn = conn
 	network.persister = persister
 
 	return nil
 }
 
-func (network *Network) run(){
+func (network *Network) run() {
 	go network.replyHandler()
 	go network.send()
 }
@@ -102,7 +102,7 @@ func (network *Network) send() {
 	defer network.conn.Close()
 	for {
 		select {
-		case frame := <-network.SendChannel:
+		case frame := <-network.NetworkChannel:
 			log.Debugf("get a new image to send")
 			request := Request{}
 			request.FrameID = frame.FrameID

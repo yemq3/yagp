@@ -8,7 +8,7 @@ import (
 	"gocv.io/x/gocv"
 )
 
-// Displayer ...
+// Displayer 用来显示结果，可以参照下面的display()写
 type Displayer struct {
 	NewFrameNotify    chan Frame
 	NewResponseNotify chan DetectionResult

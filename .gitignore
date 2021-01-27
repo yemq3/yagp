@@ -148,3 +148,8 @@ nginx-rtmp-module/
 
 # Local History for Visual Studio Code
 .history/
+
+# JetBrains
+.idea/
+
+

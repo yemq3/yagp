@@ -1,7 +1,7 @@
 from sanic import Sanic
 from sanic.response import json
 from sanic.websocket import WebSocketProtocol
-from sanic_gzip import Compress
+# from sanic_gzip import Compress
 from app.yolov4 import *
 import cv2
 import numpy as np
@@ -11,7 +11,7 @@ import base64
 import logging
 
 app = Sanic("server")
-compress = Compress()
+# compress = Compress()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
@@ -26,7 +26,7 @@ def readb64(data):
    return img
 
 @app.websocket("/")
-@compress.compress()
+# @compress.compress()
 async def test(request, ws):
     while True:
         data = await ws.recv()
