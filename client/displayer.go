@@ -10,14 +10,12 @@ import (
 
 // Displayer 用来显示结果，可以参照下面的display()写
 type Displayer struct {
-	NewFrameNotify    chan Frame
-	NewResponseNotify chan DetectionResult
+	messageCenter MessageCenter
 }
 
-func (displayer *Displayer) init() error {
+func (displayer *Displayer) init(messageCenter MessageCenter) error {
 	log.Infoln("Displayer Init")
-	displayer.NewFrameNotify = make(chan Frame)
-	displayer.NewResponseNotify = make(chan DetectionResult)
+	displayer.messageCenter = messageCenter
 
 	return nil
 }
@@ -25,9 +23,18 @@ func (displayer *Displayer) init() error {
 func (displayer *Displayer) display() {
 	window := gocv.NewWindow("Oringin")
 	defer window.Close()
+
+	ch := displayer.messageCenter.Subscribe("Frame")
+	defer displayer.messageCenter.Unsubscribe(ch)
+
 	for {
 		select {
-		case frame := <-displayer.NewFrameNotify:
+		case msg := <-ch:
+			frame, ok := msg.Content.(Frame)
+			if !ok {
+				log.Errorf("wrong msg")
+				return
+			}
 			window.IMShow(frame.Frame)
 			window.WaitKey(10)
 		}
@@ -38,13 +45,33 @@ func (displayer *Displayer) displayDetectionRes() {
 	window := gocv.NewWindow("Detection Result")
 	defer window.Close()
 	red := color.RGBA{255, 0, 0, 0}
+
+	frameChannel := displayer.messageCenter.Subscribe("Frame")
+	defer displayer.messageCenter.Unsubscribe(frameChannel)
+
+	responseChannel := displayer.messageCenter.Subscribe("Response")
+	defer displayer.messageCenter.Unsubscribe(responseChannel)
+
+	frames := make(map[int]gocv.Mat)
+
 	for {
 		select {
-		case detectionResult := <-displayer.NewResponseNotify:
-			img := detectionResult.Frame.Frame
+		case msg := <- frameChannel:
+			frame, ok := msg.Content.(Frame)
+			if !ok{
+				log.Errorf("wrong msg")
+				return
+			}
+			frames[frame.FrameID] = frame.Frame
+		case msg := <- responseChannel:
+			response, ok := msg.Content.(Response)
+			if !ok{
+				log.Errorf("wrong msg")
+				return
+			}
+			img := frames[response.FrameID]
 			height := img.Size()[0]
 			weight := img.Size()[1]
-			response := detectionResult.Response
 			for _, box := range response.Boxes {
 				rect := image.Rectangle{}
 				rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
@@ -54,6 +81,7 @@ func (displayer *Displayer) displayDetectionRes() {
 			// 这个window的size不对，不知道怎么搞的= =
 			window.IMShow(img)
 			window.WaitKey(10)
+			delete(frames, response.FrameID)
 		}
 	}
 }

@@ -15,7 +15,7 @@ type Network struct {
 	serverAddr     url.URL
 	conn           *websocket.Conn
 	NetworkChannel chan EncodedFrame
-	persister      Persister
+	messageCenter  MessageCenter
 	// enableCompression bool
 }
 
@@ -65,15 +65,19 @@ func (network *Network) replyHandler() {
 				log.Errorln(err)
 				return
 			}
-			log.Infof("recv: %v", response)
+			log.Debugf("recv: %v", response)
 			go func(response Response) {
-				network.persister.persistResponse(response)
+				msg := Message{
+					Topic:   "Response",
+					Content: response,
+				}
+				network.messageCenter.Publish(msg)
 			}(response)
 		}
 	}
 }
 
-func (network *Network) init(addr url.URL, persister Persister) error {
+func (network *Network) init(addr url.URL, messageCenter MessageCenter) error {
 	log.Infoln("Network Init")
 	dialer := websocket.DefaultDialer
 	// dialer.EnableCompression = true
@@ -88,7 +92,7 @@ func (network *Network) init(addr url.URL, persister Persister) error {
 	network.serverAddr = addr
 	network.NetworkChannel = make(chan EncodedFrame)
 	network.conn = conn
-	network.persister = persister
+	network.messageCenter = messageCenter
 
 	return nil
 }

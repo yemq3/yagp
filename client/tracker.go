@@ -8,12 +8,12 @@ type TrackResult struct {
 
 type Tracker struct {
 	TrackerChannel chan Frame
-	persister Persister
+	messageCenter MessageCenter
 }
 
-func (tracker *Tracker) init(persister Persister) error {
+func (tracker *Tracker) init(messageCenter MessageCenter) error {
 	tracker.TrackerChannel = make(chan Frame)
-	tracker.persister = persister
+	tracker.messageCenter = messageCenter
 
 	return nil
 }
@@ -22,11 +22,17 @@ func (tracker Tracker) run()  {
 	for{
 		select {
 		case frame := <- tracker.TrackerChannel:
-			log.Infof("Tracker get Frame %v", frame.FrameID)
+			log.Debugf("Tracker get Frame %v", frame.FrameID)
 			trackResult := TrackResult{}
 			trackResult.FrameID = frame.FrameID
-			tracker.persister.persistTrackResult(trackResult)
-			continue
+
+			go func(trackResult TrackResult) {
+				msg := Message{
+					Topic:   "Track",
+					Content: trackResult,
+				}
+				tracker.messageCenter.Publish(msg)
+			}(trackResult)
 		}
 	}
 }

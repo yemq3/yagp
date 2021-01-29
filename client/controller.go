@@ -24,12 +24,12 @@ func (controller *Controller) run() {
 		select {
 		case frame := <-controller.ControllerChannel:
 			if rand.Intn(100) < 90{
-				log.Infof("Frameid: %v, go to encoder", frame.FrameID)
+				log.Debugf("Frameid: %v, go to encoder", frame.FrameID)
 				go func(frame Frame) {
 					controller.encoderChannel <- frame
 				}(frame)
 			} else {
-				log.Infof("Frameid: %v, go to tracker", frame.FrameID)
+				log.Debugf("Frameid: %v, go to tracker", frame.FrameID)
 				go func(frame Frame) {
 					controller.trackerChannel <- frame
 				}(frame)

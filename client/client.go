@@ -22,9 +22,21 @@ func main() {
 	log.SetLevel(log.InfoLevel)
 	flag.Parse()
 
+	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
+	messageCenter := MessageCenter{}
+	messageCenter.init()
+	go messageCenter.run()
+	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
+
+	// Evaluator
+	evaluator := Evaluator{}
+	evaluator.init(messageCenter)
+	go evaluator.run()
+	// Evaluator
+
 	// 显示层
 	display := Displayer{}
-	if err := display.init(); err != nil {
+	if err := display.init(messageCenter); err != nil {
 		return
 	}
 	go display.display()
@@ -33,9 +45,10 @@ func main() {
 
 	// 持久层
 	persister := Persister{}
-	if err := persister.init(display.NewFrameNotify, display.NewResponseNotify); err != nil {
+	if err := persister.init(messageCenter); err != nil {
 		return
 	}
+	go persister.run()
 	// 持久层
 
 	// websocket连接
@@ -43,7 +56,7 @@ func main() {
 	log.Infof("connecting to %s", u.String())
 
 	network := Network{}
-	if err := network.init(u, persister); err != nil {
+	if err := network.init(u, messageCenter); err != nil {
 		return
 	}
 	go network.run()
@@ -59,7 +72,7 @@ func main() {
 
 	// 初始化Tracker
 	tracker := Tracker{}
-	if err := tracker.init(persister); err != nil{
+	if err := tracker.init(messageCenter); err != nil{
 		return
 	}
 	go tracker.run()
@@ -75,9 +88,10 @@ func main() {
 
 	// 初始化Filter
 	filter := Filter{}
-	if err := filter.init(defaultFilterFunc, controler.ControllerChannel, persister); err != nil {
+	if err := filter.init(controler.ControllerChannel, messageCenter); err != nil {
 		return
 	}
+	//filter.SetFilterFunc()
 	go filter.run()
 	// 初始化Filter
 
