@@ -3,10 +3,16 @@ package main
 import (
 	log "github.com/sirupsen/logrus"
 	"sync"
-	"time"
 )
 
-type Topic string
+// 如果需要Publish新的信息，在下面加
+const (
+	FilterFrame        = iota
+	NetworkResponse
+	TrackerTrackResult
+)
+
+type Topic int
 
 type MessageCenter struct {
 	publishChannel     chan Message
@@ -22,7 +28,7 @@ type Message struct {
 }
 
 func (m *MessageCenter) init() {
-	m.publishChannel = make(chan Message)
+	m.publishChannel = make(chan Message, 100)
 	m.subscriberChannels = make(map[Topic]map[chan Message]struct{})
 	m.channelToTopic = make(map[chan Message]Topic)
 }
@@ -35,7 +41,7 @@ func (m *MessageCenter) run() {
 			chs := m.subscriberChannels[msg.Topic]
 			m.mu.Unlock()
 			for ch, _ := range chs {
-				go m.sendMessage(ch, msg)
+				m.sendMessage(ch, msg)
 			}
 		}
 	}
@@ -45,9 +51,11 @@ func (m *MessageCenter) sendMessage(ch chan Message, msg Message) {
 	select {
 	case ch <- msg:
 		log.Debugf("send a msg of %v", msg.Topic)
-	case <-time.After(5 * time.Second):
-		m.Unsubscribe(ch)
-		log.Debugf("send message timeout")
+
+	// 用goroutine发送信息的次序不能保证正确，不用goroutine下面这串代码有可能阻塞5秒的信息，先注释了
+	//case <-time.After(5 * time.Second):
+	//	m.Unsubscribe(ch)
+	//	log.Debugf("send message timeout")
 	}
 }
 

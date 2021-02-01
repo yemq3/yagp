@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"runtime"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -21,6 +22,8 @@ const (
 func main() {
 	log.SetLevel(log.InfoLevel)
 	flag.Parse()
+
+	runtime.GOMAXPROCS(20)
 
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
 	messageCenter := MessageCenter{}
@@ -40,7 +43,8 @@ func main() {
 		return
 	}
 	go display.display()
-	go display.displayDetectionRes()
+	//go display.displayDetectionRes()
+	go display.displayResult()
 	// 显示层
 
 	// 持久层
@@ -72,7 +76,7 @@ func main() {
 
 	// 初始化Tracker
 	tracker := Tracker{}
-	if err := tracker.init(messageCenter); err != nil{
+	if err := tracker.init(messageCenter, "KCF"); err != nil{
 		return
 	}
 	go tracker.run()

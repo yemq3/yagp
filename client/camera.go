@@ -64,6 +64,7 @@ func (camera *Camera) getFrame() {
 	defer img.Close()
 	defer camera.wg.Done()
 	for {
+		time.Sleep(50 * time.Millisecond)
 		select {
 		default:
 			log.Debugf("Get a new frame")

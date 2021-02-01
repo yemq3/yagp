@@ -8,6 +8,12 @@ import (
 	"gocv.io/x/gocv"
 )
 
+type Result struct {
+	frame  gocv.Mat
+	rects  []image.Rectangle
+	Method string
+}
+
 // Displayer 用来显示结果，可以参照下面的display()写
 type Displayer struct {
 	messageCenter MessageCenter
@@ -24,7 +30,7 @@ func (displayer *Displayer) display() {
 	window := gocv.NewWindow("Oringin")
 	defer window.Close()
 
-	ch := displayer.messageCenter.Subscribe("Frame")
+	ch := displayer.messageCenter.Subscribe(FilterFrame)
 	defer displayer.messageCenter.Unsubscribe(ch)
 
 	for {
@@ -46,30 +52,31 @@ func (displayer *Displayer) displayDetectionRes() {
 	defer window.Close()
 	red := color.RGBA{255, 0, 0, 0}
 
-	frameChannel := displayer.messageCenter.Subscribe("Frame")
+	frameChannel := displayer.messageCenter.Subscribe(FilterFrame)
 	defer displayer.messageCenter.Unsubscribe(frameChannel)
 
-	responseChannel := displayer.messageCenter.Subscribe("Response")
+	responseChannel := displayer.messageCenter.Subscribe(NetworkResponse)
 	defer displayer.messageCenter.Unsubscribe(responseChannel)
 
 	frames := make(map[int]gocv.Mat)
 
 	for {
 		select {
-		case msg := <- frameChannel:
+		case msg := <-frameChannel:
 			frame, ok := msg.Content.(Frame)
-			if !ok{
+			if !ok {
 				log.Errorf("wrong msg")
 				return
 			}
 			frames[frame.FrameID] = frame.Frame
-		case msg := <- responseChannel:
+		case msg := <-responseChannel:
 			response, ok := msg.Content.(Response)
-			if !ok{
+			if !ok {
 				log.Errorf("wrong msg")
 				return
 			}
-			img := frames[response.FrameID]
+			i := frames[response.FrameID]
+			img := i
 			height := img.Size()[0]
 			weight := img.Size()[1]
 			for _, box := range response.Boxes {
@@ -82,6 +89,101 @@ func (displayer *Displayer) displayDetectionRes() {
 			window.IMShow(img)
 			window.WaitKey(10)
 			delete(frames, response.FrameID)
+		}
+	}
+}
+
+// 包含Tracking和Detection的结果
+func (displayer *Displayer) displayResult() {
+	window := gocv.NewWindow("Both")
+	defer window.Close()
+	red := color.RGBA{255, 0, 0, 0}
+	blue := color.RGBA{0, 0, 255, 0}
+
+	frameChannel := displayer.messageCenter.Subscribe(FilterFrame)
+	defer displayer.messageCenter.Unsubscribe(frameChannel)
+
+	responseChannel := displayer.messageCenter.Subscribe(NetworkResponse)
+	defer displayer.messageCenter.Unsubscribe(responseChannel)
+
+	trackingChannel := displayer.messageCenter.Subscribe(TrackerTrackResult)
+	defer displayer.messageCenter.Unsubscribe(trackingChannel)
+
+	frames := make(map[int]Result)
+
+	for {
+		select {
+		case msg := <-frameChannel:
+			frame, ok := msg.Content.(Frame)
+			if !ok {
+				log.Errorf("wrong msg")
+				return
+			}
+			res, ok := frames[frame.FrameID]
+			if ok{
+				img := frame.Frame
+				if res.Method == "Tracking"{
+					for _, rect := range res.rects{
+						gocv.Rectangle(&img, rect, blue, 3)
+					}
+				} else{
+					for _, rect := range res.rects{
+						gocv.Rectangle(&img, rect, red, 3)
+					}
+				}
+				window.IMShow(img)
+				window.WaitKey(10)
+				delete(frames, frame.FrameID)
+			} else {
+				frames[frame.FrameID] = Result{
+					frame: frame.Frame,
+				}
+			}
+		case msg := <-responseChannel:
+			response, ok := msg.Content.(Response)
+			if !ok {
+				log.Errorf("wrong msg")
+				return
+			}
+			res, ok := frames[response.FrameID]
+			img := res.frame
+			copyImg := gocv.NewMat()
+			img.CopyTo(&copyImg)
+			height := copyImg.Size()[0]
+			weight := copyImg.Size()[1]
+			for _, box := range response.Boxes {
+				rect := image.Rectangle{}
+				rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
+				rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
+				gocv.Rectangle(&copyImg, rect, red, 3)
+			}
+			// 这个window的size不对，不知道怎么搞的= =
+			window.IMShow(copyImg)
+			window.WaitKey(10)
+			delete(frames, response.FrameID)
+		case msg := <-trackingChannel:
+			trackResult, ok := msg.Content.(TrackResult)
+			if !ok {
+				log.Errorf("wrong msg")
+				return
+			}
+			res, ok := frames[trackResult.FrameID]
+			if !ok{
+				frames[trackResult.FrameID] = Result{
+					rects:  trackResult.Boxes,
+					Method: "Tracking",
+				}
+				continue
+			}
+			img := res.frame
+			copyImg := gocv.NewMat()
+			img.CopyTo(&copyImg)
+			for _, rect := range trackResult.Boxes {
+				gocv.Rectangle(&copyImg, rect, blue, 3)
+			}
+			window.IMShow(copyImg)
+			window.WaitKey(10)
+			delete(frames, trackResult.FrameID)
 		}
 	}
 }

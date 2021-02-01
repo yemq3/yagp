@@ -11,7 +11,7 @@ type Filter struct {
 	FilterFunc        FilterFunc
 	FilterChannel     chan Frame
 	controllerChannel chan Frame
-	messageCenter         MessageCenter
+	messageCenter     MessageCenter
 }
 
 func defaultFilterFunc(img gocv.Mat) bool {
@@ -27,7 +27,7 @@ func (filter *Filter) init(controllerChannel chan Frame, messageCenter MessageCe
 	return nil
 }
 
-func (filter *Filter) SetFilterFunc(filterFunc FilterFunc){
+func (filter *Filter) SetFilterFunc(filterFunc FilterFunc) {
 	filter.FilterFunc = filterFunc
 }
 
@@ -36,13 +36,13 @@ func (filter *Filter) run() {
 		select {
 		case frame := <-filter.FilterChannel:
 			// 要不要传给持久层我没想好，或许这里应该加个if判断是不是要传过去
-			go func(frame Frame) {
-				msg := Message{
-					Topic:   "Frame",
-					Content: frame,
-				}
-				filter.messageCenter.Publish(msg)
-			}(frame)
+
+			msg := Message{
+				Topic:   FilterFrame,
+				Content: frame,
+			}
+			filter.messageCenter.Publish(msg)
+
 			if filter.FilterFunc(frame.Frame) {
 				// 过滤掉，不传给Controller
 				continue

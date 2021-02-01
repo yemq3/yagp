@@ -2,7 +2,6 @@ package main
 
 import (
 	log "github.com/sirupsen/logrus"
-	"math/rand"
 )
 
 type Controller struct {
@@ -20,15 +19,18 @@ func (controller *Controller) init(encoderChannel chan Frame, trackerChannel cha
 }
 
 func (controller *Controller) run() {
+	counter := 0
 	for {
 		select {
 		case frame := <-controller.ControllerChannel:
-			if rand.Intn(100) < 90{
+			if counter == 10{
+				counter = 0
 				log.Debugf("Frameid: %v, go to encoder", frame.FrameID)
 				go func(frame Frame) {
 					controller.encoderChannel <- frame
 				}(frame)
-			} else {
+			} else{
+				counter++
 				log.Debugf("Frameid: %v, go to tracker", frame.FrameID)
 				go func(frame Frame) {
 					controller.trackerChannel <- frame

@@ -20,11 +20,11 @@ func (evaluator *Evaluator) run()  {
 	// 这里应该搞个参数来控制，先mark了，还没做参数的分离
 	ticker := time.NewTicker(2 * time.Second)
 
-	frameChannel := evaluator.messageCenter.Subscribe("Frame")
+	frameChannel := evaluator.messageCenter.Subscribe(FilterFrame)
 	defer evaluator.messageCenter.Unsubscribe(frameChannel)
 	frameTime := make(map[int]int64)
 	
-	responseChannel := evaluator.messageCenter.Subscribe("Response")
+	responseChannel := evaluator.messageCenter.Subscribe(NetworkResponse)
 	defer evaluator.messageCenter.Unsubscribe(responseChannel)
 	for {
 		select{

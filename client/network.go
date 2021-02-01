@@ -66,13 +66,13 @@ func (network *Network) replyHandler() {
 				return
 			}
 			log.Debugf("recv: %v", response)
-			go func(response Response) {
-				msg := Message{
-					Topic:   "Response",
-					Content: response,
-				}
-				network.messageCenter.Publish(msg)
-			}(response)
+
+			msg := Message{
+				Topic:   NetworkResponse,
+				Content: response,
+			}
+			network.messageCenter.Publish(msg)
+
 		}
 	}
 }

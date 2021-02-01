@@ -2,14 +2,15 @@ package main
 
 import (
 	log "github.com/sirupsen/logrus"
+	"gocv.io/x/gocv"
 	"sync"
 )
 
 const (
-	None   int = 0
-	Detect int = 1
-	Track  int = 2
-	Both   int = 3
+	None   = iota
+	Detect
+	Track
+	Both
 )
 
 // DetectionResult ...
@@ -25,6 +26,8 @@ type Persister struct {
 	history       map[int]DetectionResult
 	latestFrameID int
 	messageCenter MessageCenter
+	originVideoWriter *gocv.VideoWriter
+	resultVideoWriter *gocv.VideoWriter
 
 	mu sync.Mutex
 }
@@ -79,14 +82,16 @@ func (persister *Persister) init(messageCenter MessageCenter) error {
 }
 
 func (persister *Persister) run() {
-	frameChannel := persister.messageCenter.Subscribe("Frame")
+	frameChannel := persister.messageCenter.Subscribe(FilterFrame)
 	defer persister.messageCenter.Unsubscribe(frameChannel)
 
-	responseChannel := persister.messageCenter.Subscribe("Response")
+	responseChannel := persister.messageCenter.Subscribe(NetworkResponse)
 	defer persister.messageCenter.Unsubscribe(responseChannel)
 
-	trackChannel := persister.messageCenter.Subscribe("Track")
+	trackChannel := persister.messageCenter.Subscribe(TrackerTrackResult)
 	defer persister.messageCenter.Unsubscribe(trackChannel)
+
+
 
 	for {
 		select {
