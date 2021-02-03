@@ -2,12 +2,12 @@ package main
 
 import (
 	"flag"
+	log "github.com/sirupsen/logrus"
+	"net/http"
+	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
-	"runtime"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var addr = flag.String("addr", "127.0.0.1:12345", "websocket server address")
@@ -20,10 +20,15 @@ const (
 )
 
 func main() {
+	//log.SetLevel(log.DebugLevel)
 	log.SetLevel(log.InfoLevel)
 	flag.Parse()
 
-	runtime.GOMAXPROCS(20)
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	//runtime.GOMAXPROCS(20)
 
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
 	messageCenter := MessageCenter{}

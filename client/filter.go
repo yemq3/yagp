@@ -1,6 +1,7 @@
 package main
 
 import (
+	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 )
 
@@ -35,6 +36,7 @@ func (filter *Filter) run() {
 	for {
 		select {
 		case frame := <-filter.FilterChannel:
+			log.Debugf("filter get frame, id: %v", frame.FrameID)
 			// 要不要传给持久层我没想好，或许这里应该加个if判断是不是要传过去
 
 			msg := Message{

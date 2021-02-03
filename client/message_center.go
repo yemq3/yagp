@@ -3,6 +3,7 @@ package main
 import (
 	log "github.com/sirupsen/logrus"
 	"sync"
+	"time"
 )
 
 // 如果需要Publish新的信息，在下面加
@@ -52,10 +53,10 @@ func (m *MessageCenter) sendMessage(ch chan Message, msg Message) {
 	case ch <- msg:
 		log.Debugf("send a msg of %v", msg.Topic)
 
-	// 用goroutine发送信息的次序不能保证正确，不用goroutine下面这串代码有可能阻塞5秒的信息，先注释了
-	//case <-time.After(5 * time.Second):
-	//	m.Unsubscribe(ch)
-	//	log.Debugf("send message timeout")
+	// 用goroutine发送信息的次序不能保证正确，不用goroutine下面这串代码有可能阻塞1秒的信息，先注释了
+	case <-time.After(1 * time.Second):
+		m.Unsubscribe(ch)
+		log.Debugf("send message timeout")
 	}
 }
 
@@ -63,7 +64,7 @@ func (m *MessageCenter) Subscribe(topic Topic) chan Message {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	subscriberChannel := make(chan Message)
+	subscriberChannel := make(chan Message, 100)
 
 	subs, ok := m.subscriberChannels[topic]
 	if !ok {

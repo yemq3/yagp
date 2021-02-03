@@ -42,7 +42,7 @@ func (displayer *Displayer) display() {
 				return
 			}
 			window.IMShow(frame.Frame)
-			window.WaitKey(10)
+			window.WaitKey(1)
 		}
 	}
 }
@@ -87,7 +87,7 @@ func (displayer *Displayer) displayDetectionRes() {
 			}
 			// 这个window的size不对，不知道怎么搞的= =
 			window.IMShow(img)
-			window.WaitKey(10)
+			window.WaitKey(1)
 			delete(frames, response.FrameID)
 		}
 	}
@@ -109,7 +109,7 @@ func (displayer *Displayer) displayResult() {
 	trackingChannel := displayer.messageCenter.Subscribe(TrackerTrackResult)
 	defer displayer.messageCenter.Unsubscribe(trackingChannel)
 
-	frames := make(map[int]Result)
+	frames := make(map[int]gocv.Mat)
 
 	for {
 		select {
@@ -119,34 +119,14 @@ func (displayer *Displayer) displayResult() {
 				log.Errorf("wrong msg")
 				return
 			}
-			res, ok := frames[frame.FrameID]
-			if ok{
-				img := frame.Frame
-				if res.Method == "Tracking"{
-					for _, rect := range res.rects{
-						gocv.Rectangle(&img, rect, blue, 3)
-					}
-				} else{
-					for _, rect := range res.rects{
-						gocv.Rectangle(&img, rect, red, 3)
-					}
-				}
-				window.IMShow(img)
-				window.WaitKey(10)
-				delete(frames, frame.FrameID)
-			} else {
-				frames[frame.FrameID] = Result{
-					frame: frame.Frame,
-				}
-			}
+			frames[frame.FrameID] = frame.Frame
 		case msg := <-responseChannel:
 			response, ok := msg.Content.(Response)
 			if !ok {
 				log.Errorf("wrong msg")
 				return
 			}
-			res, ok := frames[response.FrameID]
-			img := res.frame
+			img := frames[response.FrameID]
 			copyImg := gocv.NewMat()
 			img.CopyTo(&copyImg)
 			height := copyImg.Size()[0]
@@ -157,7 +137,7 @@ func (displayer *Displayer) displayResult() {
 				rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
 				gocv.Rectangle(&copyImg, rect, red, 3)
 			}
-			// 这个window的size不对，不知道怎么搞的= =
+
 			window.IMShow(copyImg)
 			window.WaitKey(10)
 			delete(frames, response.FrameID)
@@ -167,22 +147,15 @@ func (displayer *Displayer) displayResult() {
 				log.Errorf("wrong msg")
 				return
 			}
-			res, ok := frames[trackResult.FrameID]
-			if !ok{
-				frames[trackResult.FrameID] = Result{
-					rects:  trackResult.Boxes,
-					Method: "Tracking",
-				}
-				continue
-			}
-			img := res.frame
+			img := frames[trackResult.FrameID]
 			copyImg := gocv.NewMat()
 			img.CopyTo(&copyImg)
+
 			for _, rect := range trackResult.Boxes {
 				gocv.Rectangle(&copyImg, rect, blue, 3)
 			}
 			window.IMShow(copyImg)
-			window.WaitKey(10)
+			window.WaitKey(1)
 			delete(frames, trackResult.FrameID)
 		}
 	}

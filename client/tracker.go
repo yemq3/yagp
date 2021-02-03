@@ -68,9 +68,11 @@ func (tracker *Tracker) run() {
 			for _, tracker := range tracker.trackers{
 				start := time.Now().UnixNano()
 				rect, ok := tracker.Update(frame.Frame)
-				log.Infof("tracking use time: %v", float64(time.Now().UnixNano()-start) / 1000000000.0)
+				log.Infof("tracking use time: %v, ok: %v", float64(time.Now().UnixNano()-start) / 1000000000.0, ok)
 				if ok{
 					Boxes = append(Boxes, rect)
+				} else{
+					log.Debugf("tracker lost object")
 				}
 			}
 
@@ -89,19 +91,38 @@ func (tracker *Tracker) run() {
 			tracker.messageCenter.Publish(msg)
 
 		case msg := <-responseChannel:
+		priority:
+			// 如果此时frameChannel还有frame没处理，先处理，要不然之后可能会取出nil
+			for {
+				select {
+				case msg := <-frameChannel:
+					frame, ok := msg.Content.(Frame)
+					if !ok {
+						log.Errorf("get wrong msg")
+						return
+					}
+					frames[frame.FrameID] = frame.Frame
+				default:
+					break priority
+				}
+			}
 			response, ok := msg.Content.(Response)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
+			}
+			for _, t := range tracker.trackers{
+				t.Close()
 			}
 			tracker.trackers = make([]gocv.Tracker, 0) // 清空之前的tracker
 			img := frames[response.FrameID]
 			height := img.Size()[0]
 			weight := img.Size()[1]
 			for _, box := range response.Boxes {
-				rect := image.Rectangle{}
-				rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
-				rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
+				//rect := image.Rectangle{}
+				//rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
+				//rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
+				rect := image.Rect(int(box.X1 * float64(weight)), int(box.Y1 * float64(height)), int(box.X2 * float64(weight)), int(box.Y2 * float64(height)))
 				t, err := tracker.makeTracker(img, rect)
 				if err != nil{
 					return
