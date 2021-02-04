@@ -121,11 +121,27 @@ func (displayer *Displayer) displayResult() {
 			}
 			frames[frame.FrameID] = frame.Frame
 		case msg := <-responseChannel:
+		priority:
+			// 如果此时frameChannel还有frame没处理，先处理，要不然之后可能会取出nil
+			for {
+				select {
+				case msg := <-frameChannel:
+					frame, ok := msg.Content.(Frame)
+					if !ok {
+						log.Errorf("get wrong msg")
+						return
+					}
+					frames[frame.FrameID] = frame.Frame
+				default:
+					break priority
+				}
+			}
 			response, ok := msg.Content.(Response)
 			if !ok {
 				log.Errorf("wrong msg")
 				return
 			}
+			log.Infof("%v", response)
 			img := frames[response.FrameID]
 			copyImg := gocv.NewMat()
 			img.CopyTo(&copyImg)
@@ -142,6 +158,21 @@ func (displayer *Displayer) displayResult() {
 			window.WaitKey(10)
 			delete(frames, response.FrameID)
 		case msg := <-trackingChannel:
+		priority2:
+			// 如果此时frameChannel还有frame没处理，先处理，要不然之后可能会取出nil
+			for {
+				select {
+				case msg := <-frameChannel:
+					frame, ok := msg.Content.(Frame)
+					if !ok {
+						log.Errorf("get wrong msg")
+						return
+					}
+					frames[frame.FrameID] = frame.Frame
+				default:
+					break priority2
+				}
+			}
 			trackResult, ok := msg.Content.(TrackResult)
 			if !ok {
 				log.Errorf("wrong msg")

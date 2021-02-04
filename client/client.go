@@ -11,6 +11,7 @@ import (
 )
 
 var addr = flag.String("addr", "127.0.0.1:12345", "websocket server address")
+var trackingMethod = flag.String("t", "KCF", "Tracking Method")
 
 const (
 	EncodeQuality int     = 75  // jpeg压缩质量
@@ -81,7 +82,7 @@ func main() {
 
 	// 初始化Tracker
 	tracker := Tracker{}
-	if err := tracker.init(messageCenter, "MOSSE"); err != nil{
+	if err := tracker.init(messageCenter, *trackingMethod); err != nil{
 		return
 	}
 	go tracker.run()
