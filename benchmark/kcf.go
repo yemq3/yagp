@@ -1,7 +1,9 @@
 package main
 
 import (
+	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
+	"gocv.io/x/gocv/contrib"
 	"image"
 )
 
@@ -18,7 +20,7 @@ func main() {
 
 	// create a tracker instance
 	// (one of MIL, KCF, TLD, MedianFlow, Boosting, MOSSE or CSRT)
-	tracker := gocv.NewTrackerMIL()
+	tracker := contrib.NewTrackerTLD()
 	//tracker := contrib.NewTrackerKCF()
 	defer tracker.Close()
 
@@ -34,8 +36,9 @@ func main() {
 	// this work
 	//rect := gocv.SelectROI("Tracking", img)
 
+	log.Infof("%v", img.Size())
 	// but this error
-	rect := image.Rect(105, 41, 686, 654)
+	rect := image.Rect(100, 100, 641, 480)
 
 	tracker.Init(img, rect)
 

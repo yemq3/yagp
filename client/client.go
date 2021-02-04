@@ -81,7 +81,7 @@ func main() {
 
 	// 初始化Tracker
 	tracker := Tracker{}
-	if err := tracker.init(messageCenter, "KCF"); err != nil{
+	if err := tracker.init(messageCenter, "MOSSE"); err != nil{
 		return
 	}
 	go tracker.run()

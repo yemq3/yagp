@@ -9,6 +9,16 @@ import (
 	"time"
 )
 
+var supportTrackingMethod = map[string]struct{}{
+	"KCF": {},
+	"CSRT": {},
+	"MIL": {},
+	"MOSSE": {},
+	"Boosting": {},
+	"MedianFlow": {},
+	"TLD": {},
+}
+
 type TrackResult struct {
 	FrameID int
 	Boxes []image.Rectangle
@@ -18,29 +28,42 @@ type Tracker struct {
 	TrackerChannel    chan Frame
 	messageCenter     MessageCenter
 	trackingAlgorithm string
-	trackers          []gocv.Tracker
+	trackers          []contrib.Tracker
+}
+
+func min(a int, b int) int{
+	if a < b{
+		return a
+	}
+	return b
 }
 
 func (tracker *Tracker) init(messageCenter MessageCenter, trackingAlgorithm string) error {
 	tracker.TrackerChannel = make(chan Frame)
 	tracker.messageCenter = messageCenter
-	if trackingAlgorithm != "KCF" && trackingAlgorithm != "CSRT" && trackingAlgorithm != "MIL" {
-		return fmt.Errorf("unsupport tracking algorithm")
-	} else {
-		tracker.trackingAlgorithm = trackingAlgorithm
+	tracker.trackingAlgorithm = trackingAlgorithm
+	if _, ok := supportTrackingMethod[trackingAlgorithm]; !ok{
+		return fmt.Errorf("unsupport tracking method")
 	}
-
 	return nil
 }
 
-func (tracker *Tracker) makeTracker(img gocv.Mat, rectangle image.Rectangle) (gocv.Tracker, error){
-	var t gocv.Tracker
+func (tracker *Tracker) makeTracker(img gocv.Mat, rectangle image.Rectangle) (contrib.Tracker, error){
+	var t contrib.Tracker
 	if tracker.trackingAlgorithm == "KCF" {
 		t = contrib.NewTrackerKCF()
 	} else if tracker.trackingAlgorithm == "CSRT" {
 		t = contrib.NewTrackerCSRT()
-	} else {
-		t = gocv.NewTrackerMIL()
+	} else if tracker.trackingAlgorithm == "MIL"{
+		t = contrib.NewTrackerMIL()
+	}else if tracker.trackingAlgorithm == "MOSSE"{
+		t = contrib.NewTrackerMOSSE()
+	}else if tracker.trackingAlgorithm == "Boosting"{
+		t = contrib.NewTrackerBoosting()
+	}else if tracker.trackingAlgorithm == "MedianFlow"{
+		t = contrib.NewTrackerMedianFlow()
+	} else{
+		t = contrib.NewTrackerTLD()
 	}
 	init := t.Init(img, rectangle)
 	if !init {
@@ -114,15 +137,16 @@ func (tracker *Tracker) run() {
 			for _, t := range tracker.trackers{
 				t.Close()
 			}
-			tracker.trackers = make([]gocv.Tracker, 0) // 清空之前的tracker
+			tracker.trackers = make([]contrib.Tracker, 0) // 清空之前的tracker
 			img := frames[response.FrameID]
 			height := img.Size()[0]
 			weight := img.Size()[1]
 			for _, box := range response.Boxes {
-				//rect := image.Rectangle{}
-				//rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
-				//rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
-				rect := image.Rect(int(box.X1 * float64(weight)), int(box.Y1 * float64(height)), int(box.X2 * float64(weight)), int(box.Y2 * float64(height)))
+				x0 := min(int(box.X1 * float64(weight)), weight)
+				y0 := min(int(box.Y1 * float64(height)), height)
+				x1 := min(int(box.X2 * float64(weight)), weight)
+				y1 := min(int(box.Y2 * float64(height)), height)
+				rect := image.Rect(x0, y0, x1, y1)
 				t, err := tracker.makeTracker(img, rect)
 				if err != nil{
 					return
