@@ -38,7 +38,7 @@ func main() {
 
 	log.Infof("%v", img.Size())
 	// but this error
-	rect := image.Rect(100, 100, 641, 480)
+	rect := image.Rect(-1, 0, 300, 400)
 
 	tracker.Init(img, rect)
 

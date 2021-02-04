@@ -49,7 +49,6 @@ func main() {
 		return
 	}
 	go display.display()
-	//go display.displayDetectionRes()
 	go display.displayResult()
 	// 显示层
 
@@ -74,7 +73,7 @@ func main() {
 
 	// 初始化Encoder
 	encoder := Encoder{}
-	if err := encoder.init(EncodeQuality, network.NetworkChannel); err != nil {
+	if err := encoder.init(EncodeQuality, network.NetworkChannel, messageCenter); err != nil {
 		return
 	}
 	go encoder.run()

@@ -38,14 +38,11 @@ async def test(request, ws):
         # nparr = np.frombuffer(data, np.uint8)
         # img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         img = readb64(frame['Frame'])
-        logger.info("FrameID: %d, Decode Time: %f", frame['FrameID'], time.time()-start)
 
         sized = cv2.resize(img, (darknet.width, darknet.height))
         sized = cv2.cvtColor(sized, cv2.COLOR_BGR2RGB)
-        
-        start = time.time()
+
         boxes = do_detect(darknet, sized, 0.4, 0.6, USE_CUDA)
-        logger.info("FrameID: %d, Detect Time: %f", frame['FrameID'], time.time()-start)
         boxes = np.array(boxes[0]).tolist()
 
         for i in range(len(boxes)):
@@ -66,8 +63,11 @@ async def test(request, ws):
         response = {
             'FrameID': frame["FrameID"],
             'Boxes': formatBoxes,
-            'SendTime': int(time.time()*1000000000)
+            'ClientToServerTime': int(time.time()*1000000000 - frame["SendTime"]),
+            'SendTime': int(time.time()*1000000000),
+            'ProcessTime': int((time.time() - start) *1000000000)
         }
+        logger.info("FrameID: %d, Process Time: %f", frame['FrameID'], time.time()-start)
 
         await ws.send(json.dumps(response))
 

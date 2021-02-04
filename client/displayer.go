@@ -47,52 +47,6 @@ func (displayer *Displayer) display() {
 	}
 }
 
-func (displayer *Displayer) displayDetectionRes() {
-	window := gocv.NewWindow("Detection Result")
-	defer window.Close()
-	red := color.RGBA{255, 0, 0, 0}
-
-	frameChannel := displayer.messageCenter.Subscribe(FilterFrame)
-	defer displayer.messageCenter.Unsubscribe(frameChannel)
-
-	responseChannel := displayer.messageCenter.Subscribe(NetworkResponse)
-	defer displayer.messageCenter.Unsubscribe(responseChannel)
-
-	frames := make(map[int]gocv.Mat)
-
-	for {
-		select {
-		case msg := <-frameChannel:
-			frame, ok := msg.Content.(Frame)
-			if !ok {
-				log.Errorf("wrong msg")
-				return
-			}
-			frames[frame.FrameID] = frame.Frame
-		case msg := <-responseChannel:
-			response, ok := msg.Content.(Response)
-			if !ok {
-				log.Errorf("wrong msg")
-				return
-			}
-			i := frames[response.FrameID]
-			img := i
-			height := img.Size()[0]
-			weight := img.Size()[1]
-			for _, box := range response.Boxes {
-				rect := image.Rectangle{}
-				rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
-				rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
-				gocv.Rectangle(&img, rect, red, 3)
-			}
-			// 这个window的size不对，不知道怎么搞的= =
-			window.IMShow(img)
-			window.WaitKey(1)
-			delete(frames, response.FrameID)
-		}
-	}
-}
-
 // 包含Tracking和Detection的结果
 func (displayer *Displayer) displayResult() {
 	window := gocv.NewWindow("Both")
@@ -148,9 +102,11 @@ func (displayer *Displayer) displayResult() {
 			height := copyImg.Size()[0]
 			weight := copyImg.Size()[1]
 			for _, box := range response.Boxes {
-				rect := image.Rectangle{}
-				rect.Min = image.Point{int(box.X1 * float64(weight)), int(box.Y1 * float64(height))}
-				rect.Max = image.Point{int(box.X2 * float64(weight)), int(box.Y2 * float64(height))}
+				x0 := max(int(box.X1 * float64(weight)), 0)
+				y0 := max(int(box.Y1 * float64(height)), 0)
+				x1 := min(int(box.X2 * float64(weight)), weight)
+				y1 := min(int(box.Y2 * float64(height)), height)
+				rect := image.Rect(x0, y0, x1, y1)
 				gocv.Rectangle(&copyImg, rect, red, 3)
 			}
 

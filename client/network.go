@@ -28,9 +28,11 @@ type Request struct {
 
 // Response ...
 type Response struct {
-	FrameID  int
-	Boxes    []Box
-	SendTime int64
+	FrameID            int
+	Boxes              []Box
+	ClientToServerTime int64
+	SendTime           int64
+	ProcessTime        int64
 }
 
 // Box ...
@@ -41,7 +43,7 @@ type Box struct {
 	Y2      float64
 	Unknown float64 // 我真不知道这是个啥
 	Conf    float64
-	name    string
+	Name    string
 }
 
 func gzipCompress(b []byte) ([]byte, error) {
@@ -66,6 +68,7 @@ func (network *Network) replyHandler() {
 				return
 			}
 			log.Debugf("recv: %v", response)
+			serverToClientTime := time.Now().UnixNano() - response.SendTime
 
 			msg := Message{
 				Topic:   NetworkResponse,
@@ -73,6 +76,23 @@ func (network *Network) replyHandler() {
 			}
 			network.messageCenter.Publish(msg)
 
+			msg = Message{
+				Topic:   ClientToServerTime,
+				Content: response.ClientToServerTime,
+			}
+			network.messageCenter.Publish(msg)
+
+			msg = Message{
+				Topic:   ServerToClientTime,
+				Content: serverToClientTime,
+			}
+			network.messageCenter.Publish(msg)
+
+			msg = Message{
+				Topic:   ProcessTime,
+				Content: response.ProcessTime,
+			}
+			network.messageCenter.Publish(msg)
 		}
 	}
 }
@@ -111,7 +131,7 @@ func (network *Network) send() {
 			request := Request{}
 			request.FrameID = frame.FrameID
 			request.Frame = frame.Frame
-			request.SendTime = time.Now().Unix()
+			request.SendTime = time.Now().UnixNano()
 
 			err := network.conn.WriteJSON(request)
 			// b, err := json.Marshal(frame)

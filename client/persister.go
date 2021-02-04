@@ -6,11 +6,20 @@ import (
 	"sync"
 )
 
+// Method的状态
 const (
-	None   = iota
+	None = iota
 	Detect
 	Track
 	Both
+)
+
+// Status的状态
+const (
+	FrameReady = iota
+	TrackingReady
+	DetectionReady
+	Ready
 )
 
 // DetectionResult ...
@@ -19,14 +28,14 @@ type DetectionResult struct {
 	Method      int
 	Response    Response
 	TrackResult TrackResult
+	Status      int
 }
 
 // Persister 不想写，先直接存内存
 type Persister struct {
-	history       map[int]DetectionResult
-	latestFrameID int
-	messageCenter MessageCenter
-	originVideoWriter *gocv.VideoWriter
+	history           map[int]DetectionResult
+	latestFrameID     int
+	messageCenter     MessageCenter
 	resultVideoWriter *gocv.VideoWriter
 
 	mu sync.Mutex
@@ -77,6 +86,7 @@ func (persister *Persister) init(messageCenter MessageCenter) error {
 	log.Infoln("Persister Init")
 	persister.history = make(map[int]DetectionResult)
 	persister.messageCenter = messageCenter
+	//persister.resultVideoWriter, _ = gocv.VideoWriterFile("./result/result.mp4", "MJPG", 30, 640, 480, true)
 
 	return nil
 }
@@ -90,8 +100,6 @@ func (persister *Persister) run() {
 
 	trackChannel := persister.messageCenter.Subscribe(TrackerTrackResult)
 	defer persister.messageCenter.Unsubscribe(trackChannel)
-
-
 
 	for {
 		select {

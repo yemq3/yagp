@@ -8,9 +8,14 @@ import (
 
 // 如果需要Publish新的信息，在下面加
 const (
-	FilterFrame        = iota
-	NetworkResponse
-	TrackerTrackResult
+	FilterFrame        = iota // Frame
+	NetworkResponse           // Response
+	TrackerTrackResult        // TrackResult
+	EncodeTime                // int64(nanosecond)
+	TrackingTime              // int64(nanosecond)
+	ProcessTime               // int64(nanosecond)
+	ClientToServerTime        // int64(nanosecond)
+	ServerToClientTime        // int64(nanosecond)
 )
 
 type Topic int
