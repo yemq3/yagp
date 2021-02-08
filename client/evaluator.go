@@ -114,12 +114,14 @@ func (evaluator *Evaluator) run() {
 		case <-ticker.C:
 			// 定时显示目前的运行状况
 			//
+			log.Infof("--------------Running status of last 5 seconds--------------")
 			showAverageTime(evaluator.Delays, "delay")
 			showAverageTime(evaluator.EncodeTime, "encode time")
 			showAverageTime(evaluator.TrackingTime, "tracking time")
 			showAverageTime(evaluator.ProcessTime, "process time")
 			showAverageTime(evaluator.C2STime, "client to server time")
 			showAverageTime(evaluator.S2CTime, "server to client time")
+			log.Infof("--------------Running status of last 5 seconds--------------")
 			evaluator.Delays = make([]int64, 0)
 			evaluator.EncodeTime = make([]int64, 0)
 			evaluator.TrackingTime = make([]int64, 0)

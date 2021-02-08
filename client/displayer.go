@@ -95,7 +95,6 @@ func (displayer *Displayer) displayResult() {
 				log.Errorf("wrong msg")
 				return
 			}
-			log.Infof("%v", response)
 			img := frames[response.FrameID]
 			copyImg := gocv.NewMat()
 			img.CopyTo(&copyImg)
