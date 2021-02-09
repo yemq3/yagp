@@ -152,4 +152,6 @@ nginx-rtmp-module/
 # JetBrains
 .idea/
 
+/benchmark/tracker/0000/
+
 

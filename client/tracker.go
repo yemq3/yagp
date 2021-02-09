@@ -96,7 +96,8 @@ func (tracker *Tracker) run() {
 	defer tracker.messageCenter.Unsubscribe(responseChannel)
 
 	frames := make(map[int]gocv.Mat)
-
+	totalObject := 0
+	var totalTime int64 = 0
 	for {
 		select {
 		case frame := <-tracker.TrackerChannel:
@@ -113,10 +114,22 @@ func (tracker *Tracker) run() {
 				}
 			}
 			trackingTime := time.Now().UnixNano() - start
+			totalObject += len(tracker.trackers)
+			totalTime += trackingTime
+			//log.Infof("%v objects, tracking time: %v, average tracking time: %v",
+			//	len(tracker.trackers),
+			//	float64(trackingTime)/1000000000.0,
+			//	float64(trackingTime)/float64(len(tracker.trackers))/1000000000.0,
+			//)
+			//log.Infof("total object: %v, total tracking time: %v, average tracking time: %v",
+			//	totalObject,
+			//	float64(totalTime)/1000000000.0,
+			//	float64(totalTime)/float64(totalObject)/1000000000.0,
+			//)
 
 			trackResult := TrackResult{
-				FrameID: frame.FrameID,
-				Boxes:   Boxes,
+				FrameID:  frame.FrameID,
+				Boxes:    Boxes,
 				DoneTime: time.Now().UnixNano(),
 			}
 			msg := Message{

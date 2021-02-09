@@ -32,14 +32,15 @@ type Camera struct {
 func (camera *Camera) init(weight float64, height float64, frameRate float64, filterChannel chan Frame) error {
 	log.Infoln("Camera Init")
 	c, err := gocv.VideoCaptureDevice(0)
+	//c, err := gocv.VideoCaptureFile("../benchmark/tracker/video.mp4")
 	if err != nil {
 		log.Errorln(err)
 		return err
 	}
 	// 以下设置不一定生效，得看摄像头支不支持，且Set()不会返回信息，校验的话得另想办法
-	c.Set(gocv.VideoCaptureFrameWidth, weight)
-	c.Set(gocv.VideoCaptureFrameHeight, height)
-	c.Set(gocv.VideoCaptureFPS, frameRate)
+	//c.Set(gocv.VideoCaptureFrameWidth, weight)
+	//c.Set(gocv.VideoCaptureFrameHeight, height)
+	//c.Set(gocv.VideoCaptureFPS, frameRate)
 	camera.camera = c
 
 	camera.filterChannel = filterChannel
@@ -64,11 +65,14 @@ func (camera *Camera) getFrame() {
 	defer img.Close()
 	defer camera.wg.Done()
 	for {
-		time.Sleep(200 * time.Millisecond)
+		//time.Sleep(1000 * time.Millisecond)
 		select {
 		default:
 			log.Debugf("Camera get a new frame, frameid:%v", camera.latestFrameID+1)
-			camera.camera.Read(&img)
+			ok := camera.camera.Read(&img)
+			if !ok{
+				return
+			}
 			camera.latestFrameID++
 			frame := Frame{}
 			frame.FrameID = camera.latestFrameID

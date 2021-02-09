@@ -23,14 +23,14 @@ func (controller *Controller) run() {
 	for {
 		select {
 		case frame := <-controller.ControllerChannel:
-			if counter == 10{
-				counter = 0
+			if counter == 0{
+				counter = 1
 				log.Debugf("Frameid: %v, go to encoder", frame.FrameID)
 				go func(frame Frame) {
 					controller.encoderChannel <- frame
 				}(frame)
 			} else{
-				counter++
+				counter = 0
 				log.Debugf("Frameid: %v, go to tracker", frame.FrameID)
 				go func(frame Frame) {
 					controller.trackerChannel <- frame
