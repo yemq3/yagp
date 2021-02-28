@@ -41,7 +41,6 @@ type Box struct {
 	Y1      float64
 	X2      float64
 	Y2      float64
-	Unknown float64 // 我真不知道这是个啥
 	Conf    float64
 	Name    string
 }

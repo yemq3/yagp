@@ -13,6 +13,8 @@ import logging
 app = Sanic("server")
 # compress = Compress()
 
+darknet, class_names = NewDarknet(False, True)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
 handler = logging.StreamHandler()
@@ -55,7 +57,6 @@ async def test(request, ws):
                 'Y1': boxes[i][1],
                 'X2': boxes[i][2],
                 'Y2': boxes[i][3],
-                'Unknown': boxes[i][4],
                 'Conf': boxes[i][5],
                 'Name': boxes[i][6],
             })

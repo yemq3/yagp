@@ -31,8 +31,8 @@ type Camera struct {
 
 func (camera *Camera) init(weight float64, height float64, frameRate float64, filterChannel chan Frame) error {
 	log.Infoln("Camera Init")
-	c, err := gocv.VideoCaptureDevice(0)
-	//c, err := gocv.VideoCaptureFile("../benchmark/tracker/video.mp4")
+	//c, err := gocv.VideoCaptureDevice(0)
+	c, err := gocv.VideoCaptureFile("../benchmark/tracker/video.mp4")
 	if err != nil {
 		log.Errorln(err)
 		return err
@@ -44,7 +44,7 @@ func (camera *Camera) init(weight float64, height float64, frameRate float64, fi
 	camera.camera = c
 
 	camera.filterChannel = filterChannel
-	camera.latestFrameID = -1
+	camera.latestFrameID = 0
 	camera.wg = sync.WaitGroup{}
 
 	return nil
@@ -65,12 +65,13 @@ func (camera *Camera) getFrame() {
 	defer img.Close()
 	defer camera.wg.Done()
 	for {
-		//time.Sleep(1000 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		select {
 		default:
 			log.Debugf("Camera get a new frame, frameid:%v", camera.latestFrameID+1)
 			ok := camera.camera.Read(&img)
 			if !ok{
+				log.Errorf("can't read image")
 				return
 			}
 			camera.latestFrameID++
