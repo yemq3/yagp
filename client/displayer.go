@@ -70,7 +70,7 @@ func (displayer *Displayer) displayResult() {
 		case msg := <-frameChannel:
 			frame, ok := msg.Content.(Frame)
 			if !ok {
-				log.Errorf("wrong msg")
+				log.Errorf("get wrong msg")
 				return
 			}
 			frames[frame.FrameID] = frame.Frame
@@ -92,7 +92,7 @@ func (displayer *Displayer) displayResult() {
 			}
 			response, ok := msg.Content.(Response)
 			if !ok {
-				log.Errorf("wrong msg")
+				log.Errorf("get wrong msg")
 				return
 			}
 			img := frames[response.FrameID]

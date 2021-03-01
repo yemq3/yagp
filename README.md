@@ -36,7 +36,7 @@
 ## Prerequisites
 
 - [Go](https://golang.org/)：建议使用1.15版本
-- [GoCV](https://gocv.io/)
+- [GoCV](https://gocv.io/)：0.25（0.26版本删除了部分tracker）
 - [python](https://www.python.org/)：3.6+
 - [pytorch](https://pytorch.org/)：应该1.0版本以上就行
 
@@ -75,19 +75,7 @@ python main.py
 
 ### Client
 
-先按照[GoCV](https://gocv.io/getting-started/)的指引安装好gocv，如果你的gocv版本和我不对应，先去client下的go.mod修改gocv版本到你的版本
-
-```
-module yagp
-
-go 1.15
-
-require (
-	github.com/gorilla/websocket v1.4.2
-	github.com/sirupsen/logrus v1.7.0
-	gocv.io/x/gocv v0.26.0              change here
-)
-```
+先按照[GoCV](https://gocv.io/getting-started/)的指引安装好gocv
 
 #### Run
 
@@ -100,6 +88,14 @@ go run .
 
 - 如果你需要Frame，Detection Result这些数据，可以给自己的模块加个messageCenter对象，然后调用messageCenter的Subscribe方法拿到通知所用的channel（可以参考其他模块比如Persister），不知道Topic是什么的话，去对应的模块找一下调用Publish方法的地方就知道了
 - 遇到问题问下我就懂了（逃
+
+### Message Center
+
+Publish的时候直接插入到队列中
+
+开多个goroutine
+
+设置队列是否持久化信息
 
 ## TODO
 

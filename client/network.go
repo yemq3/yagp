@@ -19,32 +19,6 @@ type Network struct {
 	// enableCompression bool
 }
 
-// Request ...
-type Request struct {
-	FrameID  int
-	Frame    []byte
-	SendTime int64
-}
-
-// Response ...
-type Response struct {
-	FrameID            int
-	Boxes              []Box
-	ClientToServerTime int64
-	SendTime           int64
-	ProcessTime        int64
-}
-
-// Box ...
-type Box struct {
-	X1      float64
-	Y1      float64
-	X2      float64
-	Y2      float64
-	Conf    float64
-	Name    string
-}
-
 func gzipCompress(b []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
@@ -99,10 +73,8 @@ func (network *Network) replyHandler() {
 func (network *Network) init(addr url.URL, messageCenter MessageCenter) error {
 	log.Infoln("Network Init")
 	dialer := websocket.DefaultDialer
-	// dialer.EnableCompression = true
 
 	conn, _, err := dialer.Dial(addr.String(), nil)
-	// conn.EnableWriteCompression(true)
 	if err != nil {
 		log.Errorln(err)
 		return err
@@ -133,12 +105,7 @@ func (network *Network) send() {
 			request.SendTime = time.Now().UnixNano()
 
 			err := network.conn.WriteJSON(request)
-			// b, err := json.Marshal(frame)
-			// if err != nil {
-			// 	log.Errorln(err)
-			// 	return
-			// }
-			// err = network.conn.WriteMessage(websocket.BinaryMessage, b)
+
 			if err != nil {
 				log.Errorln(err)
 				return

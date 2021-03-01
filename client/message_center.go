@@ -24,6 +24,7 @@ type MessageCenter struct {
 	publishChannel     chan Message
 	subscriberChannels map[Topic]map[chan Message]struct{}
 	channelToTopic     map[chan Message]Topic
+	ensureOrder        bool
 
 	mu sync.Mutex
 }
@@ -33,10 +34,11 @@ type Message struct {
 	Content interface{}
 }
 
-func (m *MessageCenter) init() {
+func (m *MessageCenter) init(ensureOrder bool) {
 	m.publishChannel = make(chan Message, 100)
 	m.subscriberChannels = make(map[Topic]map[chan Message]struct{})
 	m.channelToTopic = make(map[chan Message]Topic)
+	m.ensureOrder = ensureOrder
 }
 
 func (m *MessageCenter) run() {
@@ -47,7 +49,11 @@ func (m *MessageCenter) run() {
 			chs := m.subscriberChannels[msg.Topic]
 			m.mu.Unlock()
 			for ch, _ := range chs {
-				m.sendMessage(ch, msg)
+				if m.ensureOrder{
+					m.sendMessage(ch, msg)
+				} else{
+					go m.sendMessage(ch, msg)
+				}
 			}
 		}
 	}
@@ -57,9 +63,8 @@ func (m *MessageCenter) sendMessage(ch chan Message, msg Message) {
 	select {
 	case ch <- msg:
 		log.Debugf("send a msg of %v", msg.Topic)
-
-	// 用goroutine发送信息的次序不能保证正确，不用goroutine下面这串代码有可能阻塞1秒的信息，先注释了
-	case <-time.After(1 * time.Second):
+	// 当开启顺序保证时，下面这串代码有可能阻塞0.5秒的信息
+	case <-time.After(500 * time.Millisecond):
 		m.Unsubscribe(ch)
 		log.Debugf("send message timeout")
 	}

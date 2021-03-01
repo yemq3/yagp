@@ -8,13 +8,6 @@ import (
 	"gocv.io/x/gocv"
 )
 
-// Frame ...
-type Frame struct {
-	FrameID   int
-	Frame     gocv.Mat
-	Timestamp int64
-	isDetect  bool
-}
 
 // Camera ...
 type Camera struct {

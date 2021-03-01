@@ -13,13 +13,6 @@ import (
 var addr = flag.String("addr", "127.0.0.1:12345", "websocket server address")
 var trackingMethod = flag.String("t", "KCF", "Tracking Method")
 
-const (
-	EncodeQuality int     = 75  // jpeg压缩质量
-	FrameWidth    float64 = 800 // 摄像头参数
-	FrameHeight   float64 = 600 // 摄像头参数
-	FrameRate     float64 = 24  // 摄像头参数
-)
-
 func main() {
 	//log.SetLevel(log.DebugLevel)
 	log.SetLevel(log.InfoLevel)
@@ -33,7 +26,7 @@ func main() {
 
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
 	messageCenter := MessageCenter{}
-	messageCenter.init()
+	messageCenter.init(true)
 	go messageCenter.run()
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
 
