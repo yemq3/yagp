@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"image"
+	"image/color"
 	_ "net/http/pprof"
 	"net/url"
 	"os"
@@ -73,6 +76,47 @@ func runCore(messageCenter MessageCenter) {
 	// 初始化摄像头
 }
 
+func display(frame currentFrame, window *gocv.Window) {
+	red := color.RGBA{255, 0, 0, 0}
+	// blue := color.RGBA{0, 0, 255, 0}
+	// log.Infof("%v", frame.frameID)
+
+	if frame.method == None {
+		window.IMShow(frame.frame)
+		window.WaitKey(1)
+		return
+	}
+
+	copyFrame := gocv.NewMat()
+	frame.frame.CopyTo(&copyFrame)
+	height := copyFrame.Size()[0]
+	weight := copyFrame.Size()[1]
+
+	if frame.method == Detect {
+		for _, box := range frame.detectBoxes {
+			x0 := max(int(box.X1*float64(weight)), 0)
+			y0 := max(int(box.Y1*float64(height)), 0)
+			x1 := min(int(box.X2*float64(weight)), weight)
+			y1 := min(int(box.Y2*float64(height)), height)
+			rect := image.Rect(x0, y0, x1, y1)
+			gocv.Rectangle(&copyFrame, rect, red, 3)
+		}
+	} else {
+		for _, rect := range frame.trackBoxes {
+			gocv.Rectangle(&copyFrame, rect, red, 3)
+		}
+	}
+
+	if frame.resultFrameID <= frame.frameID {
+		text := fmt.Sprintf("delay: %v", frame.frameID-frame.resultFrameID)
+		position := image.Point{X: 100, Y: 100}
+		gocv.PutText(&copyFrame, text, position, gocv.FontHersheyPlain, 10, red, 10)
+	}
+
+	window.IMShow(copyFrame)
+	window.WaitKey(1)
+}
+
 func main() {
 	//log.SetLevel(log.DebugLevel)
 	log.SetLevel(log.InfoLevel)
@@ -117,8 +161,8 @@ func main() {
 	trackingChannel := messageCenter.Subscribe(TrackerTrackResult)
 	defer messageCenter.Unsubscribe(trackingChannel)
 
-	var currentFrameID int
-	var currentFrame gocv.Mat
+	var currentFrame currentFrame
+	// var isOutofDate bool // 每次拿到新的一帧时设为
 
 	for {
 		select {
@@ -128,30 +172,29 @@ func main() {
 				log.Errorf("get wrong msg")
 				return
 			}
-			currentFrameID = frame.FrameID
-			currentFrame = frame.Frame
-			window.IMShow(frame.Frame)
-			window.WaitKey(1)
+			currentFrame.frame = frame.Frame
+			currentFrame.frameID = frame.FrameID
+			display(currentFrame, window)
 		case msg := <-responseChannel:
 			response, ok := msg.Content.(Response)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
 			}
-			if response.FrameID < currentFrameID{
-
-			}
-			window.IMShow(currentFrame)
-		case msg := <- trackingChannel:
+			currentFrame.detectBoxes = response.Boxes
+			currentFrame.resultFrameID = response.FrameID
+			currentFrame.method = Detect
+			display(currentFrame, window)
+		case msg := <-trackingChannel:
 			trackResult, ok := msg.Content.(TrackResult)
 			if !ok {
 				log.Errorf("wrong msg")
 				return
 			}
-			if trackResult.FrameID < currentFrameID{
-
-			}
-			window.IMShow(currentFrame)
+			currentFrame.trackBoxes = trackResult.Boxes
+			currentFrame.resultFrameID = trackResult.FrameID
+			currentFrame.method = Track
+			display(currentFrame, window)
 		}
 	}
 }

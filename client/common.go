@@ -46,3 +46,20 @@ type Box struct {
 	Conf float64
 	Name string
 }
+
+type currentFrame struct {
+	frame         gocv.Mat
+	frameID       int
+	detectBoxes   []Box
+	trackBoxes    []image.Rectangle
+	method        int
+	resultFrameID int
+}
+
+// Method的状态
+const (
+	None = iota
+	Detect
+	Track
+	Both
+)

@@ -6,13 +6,7 @@ import (
 	"sync"
 )
 
-// Method的状态
-const (
-	None = iota
-	Detect
-	Track
-	Both
-)
+
 
 // Status的状态
 const (
