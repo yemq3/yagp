@@ -19,6 +19,7 @@ var supportTrackingMethod = map[string]struct{}{
 	"TLD":        {},
 }
 
+// Tracker 用于实现跟踪算法
 type Tracker struct {
 	TrackerChannel    chan Frame
 	messageCenter     MessageCenter
@@ -44,6 +45,21 @@ func max(a, b int) int {
 		return b
 	}
 	return a
+}
+
+// NewTracker creates a new tracker
+func NewTracker(messageCenter MessageCenter, trackingAlgorithm string) (Tracker, error) {
+	tracker := Tracker{}
+
+	if _, ok := supportTrackingMethod[trackingAlgorithm]; !ok {
+		return tracker, fmt.Errorf("unsupport tracking method")
+	}
+
+	tracker.TrackerChannel = make(chan Frame)
+	tracker.messageCenter = messageCenter
+	tracker.trackingAlgorithm = trackingAlgorithm
+
+	return tracker, nil
 }
 
 func (tracker *Tracker) init(messageCenter MessageCenter, trackingAlgorithm string) error {
@@ -89,6 +105,7 @@ func (tracker *Tracker) closeAllTracker() {
 }
 
 func (tracker *Tracker) run() {
+	log.Infof("Tracker running...")
 	frameChannel := tracker.messageCenter.Subscribe(FilterFrame)
 	defer tracker.messageCenter.Unsubscribe(frameChannel)
 

@@ -6,8 +6,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
+	"github.com/faiface/mainthread"
 )
 
+// Result 图像及检测（跟踪）结果
 type Result struct {
 	frame  gocv.Mat
 	rects  []image.Rectangle
@@ -27,7 +29,11 @@ func (displayer *Displayer) init(messageCenter MessageCenter) error {
 }
 
 func (displayer *Displayer) display() {
-	window := gocv.NewWindow("Oringin")
+	// window := gocv.NewWindow("Oringin")
+	var window *gocv.Window
+	mainthread.Call(func(){
+		window = gocv.NewWindow("Oringin")
+	})
 	defer window.Close()
 
 	ch := displayer.messageCenter.Subscribe(FilterFrame)
@@ -42,6 +48,9 @@ func (displayer *Displayer) display() {
 				return
 			}
 			window.IMShow(frame.Frame)
+			// mainthread.Call(func() {
+			// 	window.IMShow(frame.Frame)
+			// })
 			window.WaitKey(1)
 		}
 	}
@@ -101,10 +110,10 @@ func (displayer *Displayer) displayResult() {
 			height := copyImg.Size()[0]
 			weight := copyImg.Size()[1]
 			for _, box := range response.Boxes {
-				x0 := max(int(box.X1 * float64(weight)), 0)
-				y0 := max(int(box.Y1 * float64(height)), 0)
-				x1 := min(int(box.X2 * float64(weight)), weight)
-				y1 := min(int(box.Y2 * float64(height)), height)
+				x0 := max(int(box.X1*float64(weight)), 0)
+				y0 := max(int(box.Y1*float64(height)), 0)
+				x1 := min(int(box.X2*float64(weight)), weight)
+				y1 := min(int(box.Y2*float64(height)), height)
 				rect := image.Rect(x0, y0, x1, y1)
 				gocv.Rectangle(&copyImg, rect, red, 3)
 			}

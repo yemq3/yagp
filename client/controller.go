@@ -4,21 +4,28 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Controller 决定每帧是使用跟踪还是检测
+// TODO: 在运行时根据性能数据修改参数
 type Controller struct {
 	ControllerChannel chan Frame
 	encoderChannel chan Frame
 	trackerChannel chan Frame
 }
 
-func (controller *Controller) init(encoderChannel chan Frame, trackerChannel chan Frame) error {
+// NewController creates a new Controller
+func NewController(encoderChannel chan Frame, trackerChannel chan Frame) Controller {
+	controller := Controller{}
+
 	controller.ControllerChannel = make(chan Frame)
 	controller.encoderChannel = encoderChannel
 	controller.trackerChannel = trackerChannel
 
-	return nil
+	return controller
 }
 
+
 func (controller *Controller) run() {
+	log.Infof("Controller running...")
 	counter := 0
 	for {
 		select {

@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Encoder 用于进行图像编码
 type Encoder struct {
 	EncoderChannel chan Frame
 	networkChannel chan EncodedFrame
@@ -25,17 +26,20 @@ type EncodedFrame struct {
 // 	encoder.encodeQuality = encodeQuality
 // }
 
-func (encoder *Encoder) init(encodeQuality int, networkChannel chan EncodedFrame, messageCenter MessageCenter) error {
-	log.Infoln("Processer Init")
+// NewEncoder creates a new Encoder
+func NewEncoder (encodeQuality int, networkChannel chan EncodedFrame, messageCenter MessageCenter) Encoder { 
+	encoder := Encoder{}
+
 	encoder.EncoderChannel = make(chan Frame)
 	encoder.encodeQuality = encodeQuality
 	encoder.networkChannel = networkChannel
 	encoder.messageCenter = messageCenter
 
-	return nil
+	return encoder
 }
 
 func (encoder *Encoder) run() {
+	log.Infof("Encoder running...")
 	for {
 		select {
 		case frame := <-encoder.EncoderChannel:

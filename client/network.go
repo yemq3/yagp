@@ -70,14 +70,16 @@ func (network *Network) replyHandler() {
 	}
 }
 
-func (network *Network) init(addr url.URL, messageCenter MessageCenter) error {
-	log.Infoln("Network Init")
+// NewNetwork create a new network
+func NewNetwork (addr url.URL, messageCenter MessageCenter) (Network, error) {
+	network := Network{}
+
 	dialer := websocket.DefaultDialer
 
 	conn, _, err := dialer.Dial(addr.String(), nil)
 	if err != nil {
 		log.Errorln(err)
-		return err
+		return network, err
 	}
 
 	network.serverAddr = addr
@@ -85,10 +87,12 @@ func (network *Network) init(addr url.URL, messageCenter MessageCenter) error {
 	network.conn = conn
 	network.messageCenter = messageCenter
 
-	return nil
+	return network, nil
+
 }
 
 func (network *Network) run() {
+	log.Infof("Network running...")
 	go network.replyHandler()
 	go network.send()
 }
