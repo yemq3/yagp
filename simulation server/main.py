@@ -78,5 +78,5 @@ def createHandler(bandwidth, delay, processTime):
 
 
 if __name__ == "__main__":
-    app = createApp(1e10, 0, 0.5)
+    app = createApp(1e10, 0, 0.12)
     app.run(host="0.0.0.0", port=12345, protocol=WebSocketProtocol)
