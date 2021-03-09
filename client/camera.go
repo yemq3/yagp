@@ -1,76 +1,67 @@
 package main
 
 import (
-	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 )
 
-// Frame ...
-type Frame struct {
-	FrameID   int
-	Frame     gocv.Mat
-	Timestamp int64
-	isDetect  bool
-}
-
 // Camera ...
 type Camera struct {
 	camera        *gocv.VideoCapture
+	frameRate     int
 	filterChannel chan Frame
 	history       map[int]Frame // 存之前的图像
 	latestFrameID int
-	wg            sync.WaitGroup
 
 	// weight    int
 	// height    int
 	// frameRate int
 }
 
-func (camera *Camera) init(weight float64, height float64, frameRate float64, filterChannel chan Frame) error {
-	log.Infoln("Camera Init")
-	c, err := gocv.VideoCaptureDevice(0)
-	//c, err := gocv.VideoCaptureFile("../benchmark/tracker/video.mp4")
+// NewCamera creates a new Camera
+// @param video 设为true时捕获videoFile的视频
+func NewCamera(frameRate int, filterChannel chan Frame, video bool, videoFile string) (Camera, error) {
+	camera := Camera{}
+	var c *gocv.VideoCapture
+	var err error
+
+	if video == false {
+		c, err = gocv.VideoCaptureDevice(0)
+	} else {
+		c, err = gocv.VideoCaptureFile(videoFile)
+	}
 	if err != nil {
 		log.Errorln(err)
-		return err
+		return camera, err
 	}
 	// 以下设置不一定生效，得看摄像头支不支持，且Set()不会返回信息，校验的话得另想办法
-	//c.Set(gocv.VideoCaptureFrameWidth, weight)
-	//c.Set(gocv.VideoCaptureFrameHeight, height)
-	//c.Set(gocv.VideoCaptureFPS, frameRate)
+	// c.Set(gocv.VideoCaptureFrameWidth, float64(weight))
+	//c.Set(gocv.VideoCaptureFrameHeight, float64(height))
+	//c.Set(gocv.VideoCaptureFPS, float64(frameRate))
 	camera.camera = c
-
+	camera.frameRate = frameRate
 	camera.filterChannel = filterChannel
-	camera.latestFrameID = -1
-	camera.wg = sync.WaitGroup{}
+	camera.latestFrameID = 0
 
-	return nil
+	return camera, nil
 }
 
 func (camera *Camera) run() {
-	defer camera.camera.Close()
-
-	camera.wg.Add(1)
-
-	go camera.getFrame()
-
-	camera.wg.Wait()
-}
-
-func (camera *Camera) getFrame() {
+	log.Infof("Camera running...")
 	img := gocv.NewMat()
 	defer img.Close()
-	defer camera.wg.Done()
+	defer camera.camera.Close()
 	for {
-		//time.Sleep(1000 * time.Millisecond)
+		// Set不一定管用，手动控制帧率
+		time.Sleep(time.Duration(1000/camera.frameRate) * time.Millisecond)
 		select {
 		default:
 			log.Debugf("Camera get a new frame, frameid:%v", camera.latestFrameID+1)
 			ok := camera.camera.Read(&img)
-			if !ok{
+			if !ok {
+				log.Errorf("can't read image")
 				return
 			}
 			camera.latestFrameID++

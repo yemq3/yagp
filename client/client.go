@@ -2,61 +2,31 @@ package main
 
 import (
 	"flag"
-	log "github.com/sirupsen/logrus"
-	"net/http"
+	"fmt"
+	"image"
+	"image/color"
 	_ "net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
+
+	log "github.com/sirupsen/logrus"
+	"gocv.io/x/gocv"
 )
 
-var addr = flag.String("addr", "127.0.0.1:12345", "websocket server address")
+var addr = flag.String("addr", "127.0.0.1:12345", "Websocket Server Address")
 var trackingMethod = flag.String("t", "KCF", "Tracking Method")
+var frameRate = flag.Int("frameRate", 24, "FrameRate")
+var encodeQuality = flag.Int("encodeQuality", 75, "Encode Quality")
 
-const (
-	EncodeQuality int     = 75  // jpeg压缩质量
-	FrameWidth    float64 = 800 // 摄像头参数
-	FrameHeight   float64 = 600 // 摄像头参数
-	FrameRate     float64 = 24  // 摄像头参数
-)
-
-func main() {
-	//log.SetLevel(log.DebugLevel)
-	log.SetLevel(log.InfoLevel)
-	flag.Parse()
-
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	//runtime.GOMAXPROCS(20)
-
-	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
-	messageCenter := MessageCenter{}
-	messageCenter.init()
-	go messageCenter.run()
-	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
-
+func runCore(messageCenter MessageCenter) {
 	// Evaluator
-	evaluator := Evaluator{}
-	evaluator.init(messageCenter)
+	evaluator := NewEvaluator(messageCenter)
 	go evaluator.run()
 	// Evaluator
 
-	// 显示层
-	display := Displayer{}
-	if err := display.init(messageCenter); err != nil {
-		return
-	}
-	go display.display()
-	go display.displayResult()
-	// 显示层
-
 	// 持久层
-	persister := Persister{}
-	if err := persister.init(messageCenter); err != nil {
-		return
-	}
+	persister := NewPersister(messageCenter)
 	go persister.run()
 	// 持久层
 
@@ -64,63 +34,167 @@ func main() {
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/"}
 	log.Infof("connecting to %s", u.String())
 
-	network := Network{}
-	if err := network.init(u, messageCenter); err != nil {
+	network, err := NewNetwork(u, messageCenter)
+	if err != nil {
 		return
 	}
 	go network.run()
 	// websocket连接
 
 	// 初始化Encoder
-	encoder := Encoder{}
-	if err := encoder.init(EncodeQuality, network.NetworkChannel, messageCenter); err != nil {
-		return
-	}
+	encoder := NewEncoder(*encodeQuality, network.NetworkChannel, messageCenter)
 	go encoder.run()
 	// 初始化Encoder
 
 	// 初始化Tracker
-	tracker := Tracker{}
-	if err := tracker.init(messageCenter, *trackingMethod); err != nil{
+
+	tracker, err := NewTracker(messageCenter, *trackingMethod)
+	if err != nil {
+		log.Errorln(err)
 		return
 	}
 	go tracker.run()
 	// 初始化Tracker
 
 	// 初始化Processer
-	controler := Controller{}
-	if err := controler.init(encoder.EncoderChannel, tracker.TrackerChannel); err != nil {
-		return
-	}
+	controler := NewController(encoder.EncoderChannel, tracker.TrackerChannel)
 	go controler.run()
 	// 初始化Processer
 
 	// 初始化Filter
-	filter := Filter{}
-	if err := filter.init(controler.ControllerChannel, messageCenter); err != nil {
-		return
-	}
+	filter := NewFilter(controler.ControllerChannel, messageCenter)
 	//filter.SetFilterFunc()
 	go filter.run()
 	// 初始化Filter
 
 	// 初始化摄像头
-	camera := Camera{}
-	if err := camera.init(FrameWidth, FrameHeight, FrameRate, filter.FilterChannel); err != nil {
+	camera, err := NewCamera(*frameRate, filter.FilterChannel, true, "../benchmark/tracker/video.mp4")
+	if err != nil {
 		return
 	}
 	go camera.run()
 	// 初始化摄像头
+}
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
+func display(frame currentFrame, window *gocv.Window) {
+	red := color.RGBA{255, 0, 0, 0}
+	// blue := color.RGBA{0, 0, 255, 0}
+	// log.Infof("%v", frame.frameID)
+
+	if frame.method == None {
+		window.IMShow(frame.frame)
+		window.WaitKey(1)
+		return
+	}
+
+	copyFrame := gocv.NewMat()
+	frame.frame.CopyTo(&copyFrame)
+	height := copyFrame.Size()[0]
+	weight := copyFrame.Size()[1]
+
+	if frame.method == Detect {
+		for _, box := range frame.detectBoxes {
+			x0 := max(int(box.X1*float64(weight)), 0)
+			y0 := max(int(box.Y1*float64(height)), 0)
+			x1 := min(int(box.X2*float64(weight)), weight)
+			y1 := min(int(box.Y2*float64(height)), height)
+			rect := image.Rect(x0, y0, x1, y1)
+			gocv.Rectangle(&copyFrame, rect, red, 3)
+		}
+	} else {
+		for _, rect := range frame.trackBoxes {
+			gocv.Rectangle(&copyFrame, rect, red, 3)
+		}
+	}
+
+	if frame.resultFrameID <= frame.frameID {
+		text := fmt.Sprintf("delay: %v", frame.frameID-frame.resultFrameID)
+		position := image.Point{X: 100, Y: 100}
+		gocv.PutText(&copyFrame, text, position, gocv.FontHersheyPlain, 10, red, 10)
+	}
+
+	window.IMShow(copyFrame)
+	window.WaitKey(1)
+}
+
+func main() {
+	//log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
+	flag.Parse()
+
+	// go func() {
+	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
+
+	//runtime.GOMAXPROCS(20)
+
+	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
+	messageCenter := NewMessageCenter(true)
+	go messageCenter.run()
+	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
+
+	runCore(messageCenter)
+
+	go func() {
+		interrupt := make(chan os.Signal, 1)
+		signal.Notify(interrupt, os.Interrupt)
+		for {
+			select {
+			case <-interrupt:
+				log.Infoln("interrupt")
+
+				os.Exit(0)
+				return
+			}
+		}
+	}()
+
+	window := gocv.NewWindow("Oringin")
+	defer window.Close()
+
+	frameChannel := messageCenter.Subscribe(FilterFrame)
+	defer messageCenter.Unsubscribe(frameChannel)
+
+	responseChannel := messageCenter.Subscribe(NetworkResponse)
+	defer messageCenter.Unsubscribe(responseChannel)
+
+	trackingChannel := messageCenter.Subscribe(TrackerTrackResult)
+	defer messageCenter.Unsubscribe(trackingChannel)
+
+	var currentFrame currentFrame
+	// var isOutofDate bool // 每次拿到新的一帧时设为
+
 	for {
 		select {
-		case <-interrupt:
-			log.Infoln("interrupt")
-
-			os.Exit(1)
-			return
+		case msg := <-frameChannel:
+			frame, ok := msg.Content.(Frame)
+			if !ok {
+				log.Errorf("get wrong msg")
+				return
+			}
+			currentFrame.frame = frame.Frame
+			currentFrame.frameID = frame.FrameID
+			display(currentFrame, window)
+		case msg := <-responseChannel:
+			response, ok := msg.Content.(Response)
+			if !ok {
+				log.Errorf("get wrong msg")
+				return
+			}
+			currentFrame.detectBoxes = response.Boxes
+			currentFrame.resultFrameID = response.FrameID
+			currentFrame.method = Detect
+			display(currentFrame, window)
+		case msg := <-trackingChannel:
+			trackResult, ok := msg.Content.(TrackResult)
+			if !ok {
+				log.Errorf("wrong msg")
+				return
+			}
+			currentFrame.trackBoxes = trackResult.Boxes
+			currentFrame.resultFrameID = trackResult.FrameID
+			currentFrame.method = Track
+			display(currentFrame, window)
 		}
 	}
 }

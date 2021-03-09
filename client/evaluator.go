@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Evaluator 计算性能数据
 type Evaluator struct {
 	lastProcessFrameID int
 	Delays             []int64
@@ -16,11 +17,16 @@ type Evaluator struct {
 	messageCenter      MessageCenter
 }
 
-func (evaluator *Evaluator) init(messageCenter MessageCenter) {
-	evaluator.messageCenter = messageCenter
+// NewEvaluator creates a new Evaluator
+func NewEvaluator(messageCenter MessageCenter) Evaluator {
+	evaluator := Evaluator{
+		messageCenter: messageCenter,
+	}
+	return evaluator
 }
 
 func (evaluator *Evaluator) run() {
+	log.Infof("Evaluator running...")
 	// 这里应该搞个参数来控制，先mark了，还没做参数的分离
 	ticker := time.NewTicker(5 * time.Second)
 

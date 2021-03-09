@@ -6,13 +6,7 @@ import (
 	"sync"
 )
 
-// Method的状态
-const (
-	None = iota
-	Detect
-	Track
-	Both
-)
+
 
 // Status的状态
 const (
@@ -38,7 +32,7 @@ type Persister struct {
 	messageCenter     MessageCenter
 	resultVideoWriter *gocv.VideoWriter
 
-	mu sync.Mutex
+	mu *sync.Mutex
 }
 
 func (persister *Persister) persistFrame(frame Frame) {
@@ -82,16 +76,19 @@ func (persister *Persister) readPersist(FrameID int) DetectionResult {
 	return persister.history[FrameID]
 }
 
-func (persister *Persister) init(messageCenter MessageCenter) error {
-	log.Infoln("Persister Init")
+// NewPersister creates a new Persister
+func NewPersister(messageCenter MessageCenter) Persister {
+	persister := Persister{}
+
 	persister.history = make(map[int]DetectionResult)
 	persister.messageCenter = messageCenter
-	//persister.resultVideoWriter, _ = gocv.VideoWriterFile("./result/result.mp4", "MJPG", 30, 640, 480, true)
+	persister.mu = &sync.Mutex{}
 
-	return nil
+	return persister
 }
 
 func (persister *Persister) run() {
+	log.Infof("Persister running...")
 	frameChannel := persister.messageCenter.Subscribe(FilterFrame)
 	defer persister.messageCenter.Unsubscribe(frameChannel)
 

@@ -19,33 +19,6 @@ type Network struct {
 	// enableCompression bool
 }
 
-// Request ...
-type Request struct {
-	FrameID  int
-	Frame    []byte
-	SendTime int64
-}
-
-// Response ...
-type Response struct {
-	FrameID            int
-	Boxes              []Box
-	ClientToServerTime int64
-	SendTime           int64
-	ProcessTime        int64
-}
-
-// Box ...
-type Box struct {
-	X1      float64
-	Y1      float64
-	X2      float64
-	Y2      float64
-	Unknown float64 // 我真不知道这是个啥
-	Conf    float64
-	Name    string
-}
-
 func gzipCompress(b []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
@@ -97,16 +70,16 @@ func (network *Network) replyHandler() {
 	}
 }
 
-func (network *Network) init(addr url.URL, messageCenter MessageCenter) error {
-	log.Infoln("Network Init")
+// NewNetwork create a new network
+func NewNetwork (addr url.URL, messageCenter MessageCenter) (Network, error) {
+	network := Network{}
+
 	dialer := websocket.DefaultDialer
-	// dialer.EnableCompression = true
 
 	conn, _, err := dialer.Dial(addr.String(), nil)
-	// conn.EnableWriteCompression(true)
 	if err != nil {
 		log.Errorln(err)
-		return err
+		return network, err
 	}
 
 	network.serverAddr = addr
@@ -114,10 +87,12 @@ func (network *Network) init(addr url.URL, messageCenter MessageCenter) error {
 	network.conn = conn
 	network.messageCenter = messageCenter
 
-	return nil
+	return network, nil
+
 }
 
 func (network *Network) run() {
+	log.Infof("Network running...")
 	go network.replyHandler()
 	go network.send()
 }
@@ -134,12 +109,7 @@ func (network *Network) send() {
 			request.SendTime = time.Now().UnixNano()
 
 			err := network.conn.WriteJSON(request)
-			// b, err := json.Marshal(frame)
-			// if err != nil {
-			// 	log.Errorln(err)
-			// 	return
-			// }
-			// err = network.conn.WriteMessage(websocket.BinaryMessage, b)
+
 			if err != nil {
 				log.Errorln(err)
 				return

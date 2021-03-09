@@ -5,9 +5,10 @@ import (
 	"gocv.io/x/gocv"
 )
 
-// 用于过滤帧的函数定义，返回true代表这帧会被过滤
+// FilterFunc 过滤帧的函数定义，返回true代表这帧会被过滤
 type FilterFunc func(gocv.Mat) bool
 
+// Filter 过滤帧用
 type Filter struct {
 	FilterFunc        FilterFunc
 	FilterChannel     chan Frame
@@ -19,20 +20,25 @@ func defaultFilterFunc(img gocv.Mat) bool {
 	return false
 }
 
-func (filter *Filter) init(controllerChannel chan Frame, messageCenter MessageCenter) error {
+// NewFilter creates a new Filter
+func NewFilter(controllerChannel chan Frame, messageCenter MessageCenter) Filter {
+	filter := Filter{}
+
 	filter.FilterChannel = make(chan Frame)
 	filter.FilterFunc = defaultFilterFunc
 	filter.controllerChannel = controllerChannel
 	filter.messageCenter = messageCenter
 
-	return nil
+	return filter
 }
 
+// SetFilterFunc 设置过滤函数
 func (filter *Filter) SetFilterFunc(filterFunc FilterFunc) {
 	filter.FilterFunc = filterFunc
 }
 
 func (filter *Filter) run() {
+	log.Infof("Filter running...")
 	for {
 		select {
 		case frame := <-filter.FilterChannel:

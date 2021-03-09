@@ -19,17 +19,18 @@ var supportTrackingMethod = map[string]struct{}{
 	"TLD":        {},
 }
 
-type TrackResult struct {
-	FrameID  int
-	Boxes    []image.Rectangle
-	DoneTime int64
-}
-
+// Tracker 用于实现跟踪算法
 type Tracker struct {
 	TrackerChannel    chan Frame
 	messageCenter     MessageCenter
 	trackingAlgorithm string
-	trackers          []contrib.Tracker
+	trackers          []trackerWithName
+}
+
+type trackerWithName struct {
+	t                 contrib.Tracker
+	name              string // 物体标签
+	trackingAlgorithm string
 }
 
 func min(a, b int) int {
@@ -44,6 +45,21 @@ func max(a, b int) int {
 		return b
 	}
 	return a
+}
+
+// NewTracker creates a new tracker
+func NewTracker(messageCenter MessageCenter, trackingAlgorithm string) (Tracker, error) {
+	tracker := Tracker{}
+
+	if _, ok := supportTrackingMethod[trackingAlgorithm]; !ok {
+		return tracker, fmt.Errorf("unsupport tracking method")
+	}
+
+	tracker.TrackerChannel = make(chan Frame)
+	tracker.messageCenter = messageCenter
+	tracker.trackingAlgorithm = trackingAlgorithm
+
+	return tracker, nil
 }
 
 func (tracker *Tracker) init(messageCenter MessageCenter, trackingAlgorithm string) error {
@@ -82,13 +98,14 @@ func (tracker *Tracker) makeTracker(img gocv.Mat, rectangle image.Rectangle) (co
 }
 
 func (tracker *Tracker) closeAllTracker() {
-	for _, t := range tracker.trackers {
-		t.Close()
+	for _, tracker := range tracker.trackers {
+		tracker.t.Close()
 	}
-	tracker.trackers = make([]contrib.Tracker, 0)
+	tracker.trackers = make([]trackerWithName, 0)
 }
 
 func (tracker *Tracker) run() {
+	log.Infof("Tracker running...")
 	frameChannel := tracker.messageCenter.Subscribe(FilterFrame)
 	defer tracker.messageCenter.Unsubscribe(frameChannel)
 
@@ -106,7 +123,7 @@ func (tracker *Tracker) run() {
 
 			start := time.Now().UnixNano()
 			for _, tracker := range tracker.trackers {
-				rect, ok := tracker.Update(frame.Frame)
+				rect, ok := tracker.t.Update(frame.Frame)
 				if ok {
 					Boxes = append(Boxes, rect)
 				} else {
@@ -169,6 +186,7 @@ func (tracker *Tracker) run() {
 			// 清空之前所有的tracker
 			tracker.closeAllTracker()
 
+			// 对每个box初始化一个tracker
 			img := frames[response.FrameID]
 			height := img.Size()[0]
 			weight := img.Size()[1]
@@ -182,8 +200,13 @@ func (tracker *Tracker) run() {
 				if err != nil {
 					return
 				}
-				tracker.trackers = append(tracker.trackers, t)
+				tracker.trackers = append(tracker.trackers, trackerWithName{
+					t:                 t,
+					name:              box.Name,
+					trackingAlgorithm: tracker.trackingAlgorithm,
+				})
 			}
+
 			delete(frames, response.FrameID)
 		case msg := <-frameChannel:
 			frame, ok := msg.Content.(Frame)
