@@ -1,8 +1,6 @@
 package main
 
 import (
-	"image"
-
 	"gocv.io/x/gocv"
 )
 
@@ -17,7 +15,7 @@ type Frame struct {
 // TrackResult 跟踪结果
 type TrackResult struct {
 	FrameID  int
-	Boxes    []image.Rectangle
+	Boxes    []Box
 	DoneTime int64
 }
 
@@ -37,7 +35,7 @@ type Response struct {
 	ProcessTime        int64
 }
 
-// Box ...
+// Box 框的定义，其中坐标都是0到1的小数点
 type Box struct {
 	X1   float64
 	Y1   float64
@@ -50,8 +48,7 @@ type Box struct {
 type currentFrame struct {
 	frame         gocv.Mat
 	frameID       int
-	detectBoxes   []Box
-	trackBoxes    []image.Rectangle
+	Boxes         []Box
 	method        int
 	resultFrameID int
 }

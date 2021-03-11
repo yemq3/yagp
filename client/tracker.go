@@ -31,6 +31,8 @@ type trackerWithName struct {
 	t                 contrib.Tracker
 	name              string // 物体标签
 	trackingAlgorithm string
+	weight int // 图像宽度
+	height int // 图像高度
 }
 
 func min(a, b int) int {
@@ -119,13 +121,20 @@ func (tracker *Tracker) run() {
 		select {
 		case frame := <-tracker.TrackerChannel:
 			log.Debugf("Tracker get Frame %v", frame.FrameID)
-			Boxes := make([]image.Rectangle, 0)
+			Boxes := make([]Box, 0)
 
 			start := time.Now().UnixNano()
 			for _, tracker := range tracker.trackers {
 				rect, ok := tracker.t.Update(frame.Frame)
 				if ok {
-					Boxes = append(Boxes, rect)
+					box := Box{
+						X1: float64(rect.Min.X) / float64(tracker.weight),
+						Y1: float64(rect.Min.Y) / float64(tracker.height),
+						X2: float64(rect.Max.X) / float64(tracker.weight),
+						Y2: float64(rect.Max.Y) / float64(tracker.height),
+						Name: tracker.name,
+					}
+					Boxes = append(Boxes, box)
 				} else {
 					log.Debugf("tracker lost object")
 				}
@@ -204,6 +213,8 @@ func (tracker *Tracker) run() {
 					t:                 t,
 					name:              box.Name,
 					trackingAlgorithm: tracker.trackingAlgorithm,
+					height: height,
+					weight: weight,
 				})
 			}
 
