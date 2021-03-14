@@ -13,7 +13,9 @@ import logging
 app = Sanic("server")
 # compress = Compress()
 
-darknet, class_names = NewDarknet(False, True)
+USE_CUDA = False
+
+darknet, class_names = NewDarknet(False, USE_CUDA)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
