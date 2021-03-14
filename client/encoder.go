@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -54,6 +55,13 @@ func (encoder *Encoder) run() {
 			log.Debugf("get a new image to encode")
 			img := task.frame.Frame
 			start := time.Now().UnixNano()
+			if task.resizeFactor > 0 && task.resizeFactor < 1 {
+				// 参考 https://docs.opencv.org/master/da/d54/group__imgproc__transform.html#ga47a974309e9102f5f08231edc7e7529d
+				// To shrink an image, it will generally look best with INTER_AREA interpolation
+				resizeImg := gocv.NewMat()
+				gocv.Resize(img, &resizeImg, image.Point{}, task.resizeFactor, task.resizeFactor, gocv.InterpolationArea)
+				img = resizeImg
+			} 
 			buffer, err := gocv.IMEncodeWithParams(task.encodeMethod, img, []int{gocv.IMWriteJpegQuality, task.encodeQuality})
 			encodeTime := time.Now().UnixNano() - start
 			if err != nil {
