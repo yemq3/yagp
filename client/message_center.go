@@ -58,7 +58,6 @@ func (m *MessageCenter) run() {
 		case msg := <-m.publishChannel:
 			m.mu.Lock()
 			chs := m.subscriberChannels[msg.Topic]
-			m.mu.Unlock()
 			for ch := range chs {
 				if m.ensureOrder {
 					m.sendMessage(ch, msg)
@@ -66,7 +65,7 @@ func (m *MessageCenter) run() {
 					go m.sendMessage(ch, msg)
 				}
 			}
-			// m.mu.Unlock()
+			m.mu.Unlock()
 		}
 	}
 }

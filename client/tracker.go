@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"image"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 	"gocv.io/x/gocv/contrib"
-	"image"
-	"time"
 )
 
 var supportTrackingMethod = map[string]struct{}{
@@ -21,32 +22,25 @@ var supportTrackingMethod = map[string]struct{}{
 
 // Tracker 用于实现跟踪算法
 type Tracker struct {
-	TrackerChannel    chan Frame
+	TrackerChannel    chan TrackTask
 	messageCenter     MessageCenter
 	trackingAlgorithm string
-	trackers          []trackerWithName
+	trackers          []trackerWithInfo
+	perviousBoxes     []Box
 }
 
-type trackerWithName struct {
+type TrackTask struct {
+	frame  Frame //
+	isDrop bool  // true 代表这帧不做检测，直接复制上一帧的结果
+}
+
+type trackerWithInfo struct {
 	t                 contrib.Tracker
-	name              string // 物体标签
-	trackingAlgorithm string
-	weight int // 图像宽度
-	height int // 图像高度
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a < b {
-		return b
-	}
-	return a
+	name              string  // 物体标签
+	conf              float64 //
+	trackingAlgorithm string  //
+	weight            int     // 图像宽度
+	height            int     // 图像高度
 }
 
 // NewTracker creates a new tracker
@@ -57,21 +51,11 @@ func NewTracker(messageCenter MessageCenter, trackingAlgorithm string) (Tracker,
 		return tracker, fmt.Errorf("unsupport tracking method")
 	}
 
-	tracker.TrackerChannel = make(chan Frame)
+	tracker.TrackerChannel = make(chan TrackTask)
 	tracker.messageCenter = messageCenter
 	tracker.trackingAlgorithm = trackingAlgorithm
 
 	return tracker, nil
-}
-
-func (tracker *Tracker) init(messageCenter MessageCenter, trackingAlgorithm string) error {
-	tracker.TrackerChannel = make(chan Frame)
-	tracker.messageCenter = messageCenter
-	tracker.trackingAlgorithm = trackingAlgorithm
-	if _, ok := supportTrackingMethod[trackingAlgorithm]; !ok {
-		return fmt.Errorf("unsupport tracking method")
-	}
-	return nil
 }
 
 func (tracker *Tracker) makeTracker(img gocv.Mat, rectangle image.Rectangle) (contrib.Tracker, error) {
@@ -103,7 +87,21 @@ func (tracker *Tracker) closeAllTracker() {
 	for _, tracker := range tracker.trackers {
 		tracker.t.Close()
 	}
-	tracker.trackers = make([]trackerWithName, 0)
+	tracker.trackers = make([]trackerWithInfo, 0)
+}
+
+func (tracker *Tracker) publishTrackResult(trackResult TrackResult, trackingTime int64) {
+	msg := Message{
+		Topic:   TrackerTrackResult,
+		Content: trackResult,
+	}
+	tracker.messageCenter.Publish(msg)
+
+	msg = Message{
+		Topic:   TrackingTime,
+		Content: trackingTime,
+	}
+	tracker.messageCenter.Publish(msg)
 }
 
 func (tracker *Tracker) run() {
@@ -119,19 +117,30 @@ func (tracker *Tracker) run() {
 	var totalTime int64 = 0
 	for {
 		select {
-		case frame := <-tracker.TrackerChannel:
-			log.Debugf("Tracker get Frame %v", frame.FrameID)
+		case task := <-tracker.TrackerChannel:
+			log.Debugf("Tracker get Frame %v", task.frame.FrameID)
+			if task.isDrop {
+				// 该帧不跟踪，直接复制上一帧的结果发出
+				trackResult := TrackResult{
+					FrameID:  task.frame.FrameID,
+					Boxes:    tracker.perviousBoxes,
+					DoneTime: time.Now().UnixNano(),
+				}
+				tracker.publishTrackResult(trackResult, 0)
+				break
+			}
 			Boxes := make([]Box, 0)
 
 			start := time.Now().UnixNano()
 			for _, tracker := range tracker.trackers {
-				rect, ok := tracker.t.Update(frame.Frame)
+				rect, ok := tracker.t.Update(task.frame.Frame)
 				if ok {
 					box := Box{
-						X1: float64(rect.Min.X) / float64(tracker.weight),
-						Y1: float64(rect.Min.Y) / float64(tracker.height),
-						X2: float64(rect.Max.X) / float64(tracker.weight),
-						Y2: float64(rect.Max.Y) / float64(tracker.height),
+						X1:   float64(rect.Min.X) / float64(tracker.weight),
+						Y1:   float64(rect.Min.Y) / float64(tracker.height),
+						X2:   float64(rect.Max.X) / float64(tracker.weight),
+						Y2:   float64(rect.Max.Y) / float64(tracker.height),
+						Conf: tracker.conf,
 						Name: tracker.name,
 					}
 					Boxes = append(Boxes, box)
@@ -139,36 +148,18 @@ func (tracker *Tracker) run() {
 					log.Debugf("tracker lost object")
 				}
 			}
+			tracker.perviousBoxes = Boxes
+
 			trackingTime := time.Now().UnixNano() - start
 			totalObject += len(tracker.trackers)
 			totalTime += trackingTime
-			//log.Infof("%v objects, tracking time: %v, average tracking time: %v",
-			//	len(tracker.trackers),
-			//	float64(trackingTime)/1000000000.0,
-			//	float64(trackingTime)/float64(len(tracker.trackers))/1000000000.0,
-			//)
-			//log.Infof("total object: %v, total tracking time: %v, average tracking time: %v",
-			//	totalObject,
-			//	float64(totalTime)/1000000000.0,
-			//	float64(totalTime)/float64(totalObject)/1000000000.0,
-			//)
 
 			trackResult := TrackResult{
-				FrameID:  frame.FrameID,
+				FrameID:  task.frame.FrameID,
 				Boxes:    Boxes,
 				DoneTime: time.Now().UnixNano(),
 			}
-			msg := Message{
-				Topic:   TrackerTrackResult,
-				Content: trackResult,
-			}
-			tracker.messageCenter.Publish(msg)
-
-			msg = Message{
-				Topic:   TrackingTime,
-				Content: trackingTime,
-			}
-			tracker.messageCenter.Publish(msg)
+			tracker.publishTrackResult(trackResult, trackingTime)
 
 		case msg := <-responseChannel:
 		priority:
@@ -209,14 +200,17 @@ func (tracker *Tracker) run() {
 				if err != nil {
 					return
 				}
-				tracker.trackers = append(tracker.trackers, trackerWithName{
+				tracker.trackers = append(tracker.trackers, trackerWithInfo{
 					t:                 t,
 					name:              box.Name,
+					conf:              box.Conf,
 					trackingAlgorithm: tracker.trackingAlgorithm,
-					height: height,
-					weight: weight,
+					height:            height,
+					weight:            weight,
 				})
 			}
+
+			tracker.perviousBoxes = response.Boxes
 
 			delete(frames, response.FrameID)
 		case msg := <-frameChannel:

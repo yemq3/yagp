@@ -55,8 +55,8 @@ type currentFrame struct {
 
 // Method的状态
 const (
-	None = iota
-	Detect
-	Track
-	Both
+	NONE = iota
+	DETECT
+	TRACK
+	BOTH
 )

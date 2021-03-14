@@ -48,10 +48,10 @@ func (persister *Persister) persistResponse(response Response) {
 	defer persister.mu.Unlock()
 	detectionResult := persister.history[response.FrameID]
 	detectionResult.Response = response
-	if detectionResult.Method == Track {
-		detectionResult.Method = Both
+	if detectionResult.Method == TRACK {
+		detectionResult.Method = BOTH
 	} else {
-		detectionResult.Method = Detect
+		detectionResult.Method = DETECT
 	}
 	persister.history[response.FrameID] = detectionResult
 
@@ -62,10 +62,10 @@ func (persister *Persister) persistTrackResult(result TrackResult) {
 	defer persister.mu.Unlock()
 	detectionResult := persister.history[result.FrameID]
 	detectionResult.TrackResult = result
-	if detectionResult.Method == Detect {
-		detectionResult.Method = Both
+	if detectionResult.Method == DETECT {
+		detectionResult.Method = BOTH
 	} else {
-		detectionResult.Method = Track
+		detectionResult.Method = TRACK
 	}
 	persister.history[result.FrameID] = detectionResult
 }
