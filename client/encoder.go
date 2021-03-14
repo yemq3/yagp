@@ -1,17 +1,27 @@
 package main
 
 import (
+	"image"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
-	"time"
 )
 
 // Encoder 用于进行图像编码
 type Encoder struct {
-	EncoderChannel chan Frame
+	EncoderChannel chan EncodeTask
 	networkChannel chan EncodedFrame
 	encodeQuality  int
-	messageCenter MessageCenter
+	messageCenter  MessageCenter
+}
+
+// EncodeTask 编码任务的信息
+type EncodeTask struct {
+	frame         Frame
+	encodeQuality int
+	resizeFactor  float64
+	encodeMethod  gocv.FileExt
 }
 
 // EncodedFrame ...
@@ -19,7 +29,6 @@ type EncodedFrame struct {
 	Frame         []byte
 	FrameID       int
 	EncodeQuality int
-	// EncodeMethod  string // 暂时只支持jpg，在非嵌入式设备上用webp可能会更好
 }
 
 // func (encoder *Processer) SetEncodeQuality(encodeQuality int){
@@ -27,10 +36,10 @@ type EncodedFrame struct {
 // }
 
 // NewEncoder creates a new Encoder
-func NewEncoder (encodeQuality int, networkChannel chan EncodedFrame, messageCenter MessageCenter) Encoder { 
+func NewEncoder(encodeQuality int, networkChannel chan EncodedFrame, messageCenter MessageCenter) Encoder {
 	encoder := Encoder{}
 
-	encoder.EncoderChannel = make(chan Frame)
+	encoder.EncoderChannel = make(chan EncodeTask)
 	encoder.encodeQuality = encodeQuality
 	encoder.networkChannel = networkChannel
 	encoder.messageCenter = messageCenter
@@ -42,11 +51,18 @@ func (encoder *Encoder) run() {
 	log.Infof("Encoder running...")
 	for {
 		select {
-		case frame := <-encoder.EncoderChannel:
+		case task := <-encoder.EncoderChannel:
 			log.Debugf("get a new image to encode")
-			img := frame.Frame
+			img := task.frame.Frame
 			start := time.Now().UnixNano()
-			buffer, err := gocv.IMEncodeWithParams(gocv.JPEGFileExt, img, []int{gocv.IMWriteJpegQuality, encoder.encodeQuality})
+			if task.resizeFactor > 0 && task.resizeFactor < 1 {
+				// 参考 https://docs.opencv.org/master/da/d54/group__imgproc__transform.html#ga47a974309e9102f5f08231edc7e7529d
+				// To shrink an image, it will generally look best with INTER_AREA interpolation
+				resizeImg := gocv.NewMat()
+				gocv.Resize(img, &resizeImg, image.Point{}, task.resizeFactor, task.resizeFactor, gocv.InterpolationArea)
+				img = resizeImg
+			} 
+			buffer, err := gocv.IMEncodeWithParams(task.encodeMethod, img, []int{gocv.IMWriteJpegQuality, task.encodeQuality})
 			encodeTime := time.Now().UnixNano() - start
 			if err != nil {
 				log.Errorln(err)
@@ -54,8 +70,8 @@ func (encoder *Encoder) run() {
 			}
 			encodedFrame := EncodedFrame{}
 			encodedFrame.Frame = buffer
-			encodedFrame.FrameID = frame.FrameID
-			encodedFrame.EncodeQuality = encoder.encodeQuality
+			encodedFrame.FrameID = task.frame.FrameID
+			encodedFrame.EncodeQuality = task.encodeQuality
 			go func(encodedFrame EncodedFrame) {
 				encoder.networkChannel <- encodedFrame
 			}(encodedFrame)

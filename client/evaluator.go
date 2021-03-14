@@ -7,7 +7,6 @@ import (
 
 // Evaluator 计算性能数据
 type Evaluator struct {
-	lastProcessFrameID int
 	Delays             []int64
 	EncodeTime         []int64
 	TrackingTime       []int64

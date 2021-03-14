@@ -1,47 +1,65 @@
 package main
 
 import (
+	"sync"
+
 	log "github.com/sirupsen/logrus"
 )
 
-// Controller 决定每帧是使用跟踪还是检测
-// TODO: 在运行时根据性能数据修改参数
 type Controller struct {
-	ControllerChannel chan Frame
-	encoderChannel chan Frame
-	trackerChannel chan Frame
+	evaluator          Evaluator   // 性能数据
+	executor           Executor    // 其他模块的调用单元
+	ControllerChannel  chan Frame  //
+	interval           int         // 每隔interval帧做一次检测
+	counter            int         //
+	isNextFrameControl bool        //
+	nextFrameMethod    int         //
+	mu                 *sync.Mutex //
 }
 
-// NewController creates a new Controller
-func NewController(encoderChannel chan Frame, trackerChannel chan Frame) Controller {
-	controller := Controller{}
-
-	controller.ControllerChannel = make(chan Frame)
-	controller.encoderChannel = encoderChannel
-	controller.trackerChannel = trackerChannel
+func NewController(messageCenter MessageCenter, encoderChannel chan EncodeTask, trackerChannel chan TrackTask, interval int) Controller {
+	controller := Controller{
+		evaluator:         NewEvaluator(messageCenter),
+		executor:          NewExecutor(encoderChannel, trackerChannel),
+		ControllerChannel: make(chan Frame),
+		interval:          interval,
+	}
 
 	return controller
 }
 
+func (controller *Controller) SetInterval(interval int) {
+	controller.interval = interval
+}
+
+// 设置下一帧用的方法，如果设为DETECT，下一帧会丢去检测，然后继续按interval的值进行跟踪，设为TRACK会让检测延迟一帧
+func (controller *Controller) SetNextFrameMethod(method int) {
+	controller.mu.Lock()
+	defer controller.mu.Unlock()
+	if method == DETECT || method == TRACK {
+		controller.isNextFrameControl = true
+		controller.nextFrameMethod = method
+	}
+}
 
 func (controller *Controller) run() {
-	log.Infof("Controller running...")
-	counter := 0
+	log.Infof("controller running...")
+	go controller.evaluator.run()
 	for {
 		select {
 		case frame := <-controller.ControllerChannel:
-			if counter == 0{
-				counter = 1
+			if controller.counter == 0 {
 				log.Debugf("Frameid: %v, go to encoder", frame.FrameID)
-				go func(frame Frame) {
-					controller.encoderChannel <- frame
-				}(frame)
-			} else{
-				counter = 0
+				controller.executor.sendEncodeTask(frame, 75, 1)
+			} else {
 				log.Debugf("Frameid: %v, go to tracker", frame.FrameID)
-				go func(frame Frame) {
-					controller.trackerChannel <- frame
-				}(frame)
+				controller.executor.sendTrackTask(frame)
+				// controller.executor.DropTask(frame)
+			}
+			if controller.counter == controller.interval {
+				controller.counter = 0
+			} else {
+				controller.counter++
 			}
 		}
 	}
