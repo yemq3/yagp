@@ -89,5 +89,5 @@ if __name__ == "__main__":
     # 5g 200mbps 20ms
     # wifi 40mbps 1ms
     # wifi 802.11ac 250mbps 1ms
-    app = createApp(1e10, 0, 0)
+    app = createApp(1e10, 0, 0.01)
     app.run(host="0.0.0.0", port=12345, protocol=WebSocketProtocol)

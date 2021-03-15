@@ -8,17 +8,20 @@
 ├── client                                  client端代码
 │   ├── camera.go
 │   ├── client.go
+│   ├── common.go
 │   ├── controller.go
-│   ├── displayer.go
 │   ├── encoder.go
 │   ├── evaluator.go
+│   ├── executor.go
 │   ├── filter.go
 │   ├── go.mod
 │   ├── go.sum
 │   ├── message_center.go
 │   ├── network.go
 │   ├── persister.go
+│   ├── scheduler.go
 │   └── tracker.go
+│   ├── utils.go
 └── sanic                                   server端代码
     ├── app
     │   └── yolov4                          https://github.com/Tianxiaomo/pytorch-YOLOv4修改得来
@@ -29,13 +32,25 @@
     │       └── weight
     │           ├── download.sh             这里下载权重之后应该就能跑了
     └── main.py
+└── simulation server                       模拟服务器
+    ├── app
+    │   └── yolov4                          https://github.com/Tianxiaomo/pytorch-YOLOv4修改得来
+    │       ├── __init__.py                 可以在这修改是否使用GPU，使用完整模型还是tiny
+    │       ├── cfg
+    │       ├── data
+    │       ├── tool
+    │       └── weight
+    │           ├── download.sh             这里下载权重之后应该就能跑了
+    ├── result                              存放缓存的结果
+    └── main.py
+    └── video2result.py                     将视频的结果缓存下来
 ```
 
 ![framework](pic/framework.jpg)
 
 ## Prerequisites
 
-- [Go](https://golang.org/)：建议使用1.15版本
+- [Go](https://golang.org/)：建议使用1.15+版本
 - [GoCV](https://gocv.io/)：0.25（0.26版本删除了部分tracker）
 - [python](https://www.python.org/)：3.6+
 - [pytorch](https://pytorch.org/)：应该1.0版本以上就行
@@ -89,18 +104,9 @@ go run .
 - 如果你需要Frame，Detection Result这些数据，可以给自己的模块加个messageCenter对象，然后调用messageCenter的Subscribe方法拿到通知所用的channel（可以参考其他模块比如Persister），不知道Topic是什么的话，去对应的模块找一下调用Publish方法的地方就知道了
 - 遇到问题问下我就懂了（逃
 
-### Message Center
-
-Publish的时候直接插入到队列中
-
-开多个goroutine
-
-设置队列是否持久化信息
-
 ## TODO
 
-- [ ] 历史帧到达一定数量后自动删除
 - [ ] 更细致的日志信息
 - [ ] 对网络情况的自适应
-- [ ] Frame Scheduler
-- [ ] gzip压缩（需要连接双方协商，不过测试下来gzip和zlib对图片的压缩率都不高）
+- [ ] 对检测结果是否可信的判断
+- [ ] benchmark
