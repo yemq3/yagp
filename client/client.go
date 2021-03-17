@@ -18,11 +18,12 @@ var trackingMethod = flag.String("t", "KCF", "Tracking Method")
 var frameRate = flag.Int("frameRate", 24, "FrameRate")
 var encodeQuality = flag.Int("encodeQuality", 75, "Encode Quality")
 var interval = flag.Int("interval", 1, "Interval")
+var resultDir = flag.String("resultDir", "./result", "Path to result")
 
 func runCore(messageCenter MessageCenter) {
 	// 持久层
-	// persister := NewPersister(messageCenter)
-	// go persister.run()
+	persister := NewPersister(messageCenter, *resultDir)
+	go persister.run()
 	// 持久层
 
 	// websocket连接
