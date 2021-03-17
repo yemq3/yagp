@@ -1,96 +1,30 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	log "github.com/sirupsen/logrus"
-	"gocv.io/x/gocv"
-	"sync"
 )
 
-
-
-// Status的状态
-const (
-	FrameReady = iota
-	TrackingReady
-	DetectionReady
-	Ready
-)
-
-// DetectionResult ...
-type DetectionResult struct {
-	Frame       Frame
-	Method      int
-	Response    Response
-	TrackResult TrackResult
-	Status      int
-}
-
-// Persister 不想写，先直接存内存
+// Persister 保存结果
 type Persister struct {
-	history           map[int]DetectionResult
-	latestFrameID     int
-	messageCenter     MessageCenter
-	resultVideoWriter *gocv.VideoWriter
-
-	mu *sync.Mutex
-}
-
-func (persister *Persister) persistFrame(frame Frame) {
-	persister.mu.Lock()
-	defer persister.mu.Unlock()
-	detectionResult := DetectionResult{}
-	detectionResult.Frame = frame
-	persister.history[frame.FrameID] = detectionResult
-}
-
-func (persister *Persister) persistResponse(response Response) {
-	persister.mu.Lock()
-	defer persister.mu.Unlock()
-	detectionResult := persister.history[response.FrameID]
-	detectionResult.Response = response
-	if detectionResult.Method == TRACK {
-		detectionResult.Method = BOTH
-	} else {
-		detectionResult.Method = DETECT
-	}
-	persister.history[response.FrameID] = detectionResult
-
-}
-
-func (persister *Persister) persistTrackResult(result TrackResult) {
-	persister.mu.Lock()
-	defer persister.mu.Unlock()
-	detectionResult := persister.history[result.FrameID]
-	detectionResult.TrackResult = result
-	if detectionResult.Method == DETECT {
-		detectionResult.Method = BOTH
-	} else {
-		detectionResult.Method = TRACK
-	}
-	persister.history[result.FrameID] = detectionResult
-}
-
-func (persister *Persister) readPersist(FrameID int) DetectionResult {
-	persister.mu.Lock()
-	defer persister.mu.Unlock()
-	return persister.history[FrameID]
+	resultDir     string
+	messageCenter MessageCenter
 }
 
 // NewPersister creates a new Persister
-func NewPersister(messageCenter MessageCenter) Persister {
+func NewPersister(messageCenter MessageCenter, dir string) Persister {
 	persister := Persister{}
 
-	persister.history = make(map[int]DetectionResult)
 	persister.messageCenter = messageCenter
-	persister.mu = &sync.Mutex{}
+	persister.resultDir = dir
 
 	return persister
 }
 
 func (persister *Persister) run() {
 	log.Infof("Persister running...")
-	frameChannel := persister.messageCenter.Subscribe(FilterFrame)
-	defer persister.messageCenter.Unsubscribe(frameChannel)
 
 	responseChannel := persister.messageCenter.Subscribe(NetworkResponse)
 	defer persister.messageCenter.Unsubscribe(responseChannel)
@@ -98,29 +32,45 @@ func (persister *Persister) run() {
 	trackChannel := persister.messageCenter.Subscribe(TrackerTrackResult)
 	defer persister.messageCenter.Unsubscribe(trackChannel)
 
+	err := os.Mkdir(persister.resultDir, 0755)
+	if err != nil {
+		log.Errorf("can't create dir")
+	}
+
 	for {
 		select {
-		case msg := <-frameChannel:
-			frame, ok := msg.Content.(Frame)
-			if !ok {
-				log.Errorf("get wrong msg")
-				return
-			}
-			persister.persistFrame(frame)
 		case msg := <-responseChannel:
 			response, ok := msg.Content.(Response)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
 			}
-			persister.persistResponse(response)
+			f, err := os.Create(fmt.Sprintf("%v/%v.txt", persister.resultDir, response.FrameID))
+			if err != nil {
+				log.Errorf("can't create dir")
+			}
+			f.WriteString("detect\n")
+			for _, box := range response.Boxes {
+				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, box.X1, box.Y1, box.X2, box.Y2))
+			}
+
+			f.Close()
 		case msg := <-trackChannel:
 			trackResult, ok := msg.Content.(TrackResult)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
 			}
-			persister.persistTrackResult(trackResult)
+			f, err := os.Create(fmt.Sprintf("%v/%v.txt", persister.resultDir, trackResult.FrameID))
+			if err != nil {
+				log.Errorf("can't create dir")
+			}
+			f.WriteString("track\n")
+			for _, box := range trackResult.Boxes {
+				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, box.X1, box.Y1, box.X2, box.Y2))
+			}
+
+			f.Close()
 		}
 	}
 }

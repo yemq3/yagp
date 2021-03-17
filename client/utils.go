@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 
+	log "github.com/sirupsen/logrus"
 	"gocv.io/x/gocv"
 )
 
@@ -23,6 +24,11 @@ func max(a, b int) int {
 }
 
 func display(frame currentFrame, window *gocv.Window) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("Recovered in f", r)
+		}
+	}()
 	red := color.RGBA{255, 0, 0, 0}
 	// blue := color.RGBA{0, 0, 255, 0}
 	// log.Infof("%v", frame.frameID)
