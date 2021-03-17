@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -62,6 +63,8 @@ func (camera *Camera) run() {
 			ok := camera.camera.Read(&img)
 			if !ok {
 				log.Errorf("can't read image")
+				time.Sleep(2 * time.Second)
+				os.Exit(0)
 				return
 			}
 			camera.latestFrameID++

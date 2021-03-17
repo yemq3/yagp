@@ -34,6 +34,7 @@ def createHandler(bandwidth, delay, processTime):
         while True:
             data = await ws.recv()
 
+
             start = time.time()
             frame = json.loads(data)
             logger.info(
@@ -41,6 +42,7 @@ def createHandler(bandwidth, delay, processTime):
                 len(data),
                 frame["FrameID"],
             )
+            client_to_server_time = time.time_ns() - frame["SendTime"]
             time.sleep(delay)
             time.sleep(len(data) / bandwidth)
 
@@ -73,8 +75,8 @@ def createHandler(bandwidth, delay, processTime):
             response = {
                 "FrameID": frame["FrameID"],
                 "Boxes": formatBoxes,
-                "ClientToServerTime": int(time.time() * 1000000000 - frame["SendTime"]),
-                "SendTime": int(time.time() * 1000000000),
+                "ClientToServerTime": client_to_server_time,
+                "SendTime": time.time_ns(),
                 "ProcessTime": int(processTime * 1000000000),
             }
             logger.info("FrameID: %d, Process Time: %f", frame["FrameID"], processTime)
