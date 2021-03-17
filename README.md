@@ -52,7 +52,7 @@
 
 - [Go](https://golang.org/)：建议使用1.15+版本
 - [GoCV](https://gocv.io/)：0.25（0.26版本删除了部分tracker）
-- [python](https://www.python.org/)：3.6+
+- [python](https://www.python.org/)：3.7+
 - [pytorch](https://pytorch.org/)：应该1.0版本以上就行
 
 ## Getting Started

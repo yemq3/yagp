@@ -211,39 +211,39 @@ func (evaluator *Evaluator) run() {
 			evaluator.C2STimeHistory = make([]int64, 0)
 			evaluator.S2CTimeHistory = make([]int64, 0)
 			if isStart {
-				evaluator.SmoothedDelays = float64(delays)
-				evaluator.DeviationDelays = float64(delays) / 2
+				evaluator.SmoothedDelays = delays
+				evaluator.DeviationDelays = delays / 2
 				evaluator.WarningDelays = evaluator.SmoothedDelays + K*evaluator.DeviationDelays
 
-				evaluator.SmoothedEncodeTime = float64(encodeTime)
-				evaluator.DeviationEncodeTime = float64(encodeTime) / 2
+				evaluator.SmoothedEncodeTime = encodeTime
+				evaluator.DeviationEncodeTime = encodeTime / 2
 				evaluator.WarningEncodeTime = evaluator.SmoothedEncodeTime + K*evaluator.DeviationEncodeTime
 
-				evaluator.SmoothedTrackingTime = float64(trackingTime)
-				evaluator.DeviationTrackingTime = float64(trackingTime) / 2
+				evaluator.SmoothedTrackingTime = trackingTime
+				evaluator.DeviationTrackingTime = trackingTime / 2
 				evaluator.WarningTrackingTime = evaluator.SmoothedTrackingTime + K*evaluator.DeviationTrackingTime
 
-				evaluator.SmoothedProcessTime = float64(processTime)
-				evaluator.DeviationProcessTime = float64(processTime) / 2
+				evaluator.SmoothedProcessTime = processTime
+				evaluator.DeviationProcessTime = processTime / 2
 				evaluator.WarningProcessTime = evaluator.SmoothedProcessTime + K*evaluator.DeviationProcessTime
 
-				evaluator.SmoothedC2STime = float64(c2sTime)
-				evaluator.DeviationC2STime = float64(c2sTime) / 2
+				evaluator.SmoothedC2STime = c2sTime
+				evaluator.DeviationC2STime = c2sTime / 2
 				evaluator.WarningC2STime = evaluator.SmoothedC2STime + K*evaluator.DeviationC2STime
 
-				evaluator.SmoothedS2CTime = float64(s2cTime)
-				evaluator.DeviationS2CTime = float64(s2cTime) / 2
+				evaluator.SmoothedS2CTime = s2cTime
+				evaluator.DeviationS2CTime = s2cTime / 2
 				evaluator.WarningS2CTime = evaluator.SmoothedS2CTime + K*evaluator.DeviationS2CTime
 			}
 		}
 	}
 }
 
-func showAverageTime(his []int64, name string) int64 {
+func showAverageTime(his []int64, name string) float64 {
 	var total int64 = 0
 	for _, time := range his {
 		total += time
 	}
 	log.Infof("average %v: %v", name, float64(total)/float64(len(his)*1000000000))
-	return total
+	return float64(total) / float64(len(his))
 }
