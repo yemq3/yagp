@@ -31,7 +31,6 @@ func display(frame currentFrame, window *gocv.Window) {
 	}()
 	red := color.RGBA{255, 0, 0, 0}
 	// blue := color.RGBA{0, 0, 255, 0}
-	// log.Infof("%v", frame.frameID)
 
 	if frame.method == NONE {
 		window.IMShow(frame.frame)

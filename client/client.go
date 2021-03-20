@@ -59,7 +59,7 @@ func runCore(messageCenter MessageCenter) {
 	// 初始化Filter
 
 	// 初始化摄像头
-	camera, err := NewCamera(*frameRate, filter.FilterChannel, true, "../benchmark/tracker/video.mp4")
+	camera, err := NewCamera(*frameRate, filter.FilterChannel, true, "../benchmark/video.mp4")
 	if err != nil {
 		return
 	}
@@ -83,6 +83,8 @@ func main() {
 	// 绑定主线程，要不然mac会报错
 	runtime.LockOSThread()
 
+	// runtime.GOMAXPROCS(20)
+
 	// 性能分析用
 	// go func() {
 	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
@@ -90,7 +92,7 @@ func main() {
 
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
 	// ensureOrder 目前必须设置为true，因为代码很多部分都假设结果是顺序的= =
-	messageCenter := NewMessageCenter(true)
+	messageCenter := NewMessageCenter(false)
 	go messageCenter.run()
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
 
@@ -122,7 +124,6 @@ func main() {
 	defer messageCenter.Unsubscribe(trackingChannel)
 
 	var currentFrame currentFrame
-	// var isOutofDate bool // 每次拿到新的一帧时设为
 
 	for {
 		select {
