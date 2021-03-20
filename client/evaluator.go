@@ -195,6 +195,8 @@ func (evaluator *Evaluator) run() {
 			processTime := showAverageTime(evaluator.ProcessTimeHistory, "process time")
 			c2sTime := showAverageTime(evaluator.C2STimeHistory, "client to server time")
 			s2cTime := showAverageTime(evaluator.S2CTimeHistory, "server to client time")
+			// fps := getFPS(encodeTime, trackingTime, processTime, c2sTime, s2cTime)
+			// log.Infof("fps:%v", fps)
 			log.Infof("--------------Running status of last 1 seconds--------------")
 			log.Infof("--------------Current status of Time --------------")
 			log.Infof("Smoothed Delays: %v, Deviation Delays: %v, Warning Delays: %v", evaluator.SmoothedDelays/1000000000, evaluator.DeviationDelays/1000000000, evaluator.WarningDelays/1000000000)
@@ -246,4 +248,11 @@ func showAverageTime(his []int64, name string) float64 {
 	}
 	log.Infof("average %v: %v", name, float64(total)/float64(len(his)*1000000000))
 	return float64(total) / float64(len(his))
+}
+
+func getFPS(encodeTime, trackingTime, processTime, c2sTime, s2cTime float64) float64{
+	trackFPS := 1 / trackingTime * 1000000000
+	detectFPS := 1 / (encodeTime+processTime+c2sTime+s2cTime) * 1000000000
+
+	return trackFPS + detectFPS
 }

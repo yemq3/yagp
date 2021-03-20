@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -26,6 +27,9 @@ func NewPersister(messageCenter MessageCenter, dir string) Persister {
 func (persister *Persister) run() {
 	log.Infof("Persister running...")
 
+	// frameChannel := persister.messageCenter.Subscribe(FilterFrame)
+	// defer persister.messageCenter.Unsubscribe(frameChannel)
+
 	responseChannel := persister.messageCenter.Subscribe(NetworkResponse)
 	defer persister.messageCenter.Unsubscribe(responseChannel)
 
@@ -37,6 +41,16 @@ func (persister *Persister) run() {
 		log.Errorf("can't create dir")
 	}
 
+	fpsFile, err := os.Create(fmt.Sprintf("%v/fps.txt", persister.resultDir))
+	if err != nil {
+		log.Errorf("can't create dir")
+	}
+	defer fpsFile.Close()
+
+	ticker := time.NewTicker(1 * time.Second)
+	detectCounter := 0
+	trackCounter := 0
+
 	for {
 		select {
 		case msg := <-responseChannel:
@@ -45,6 +59,8 @@ func (persister *Persister) run() {
 				log.Errorf("get wrong msg")
 				return
 			}
+			detectCounter += 1
+
 			f, err := os.Create(fmt.Sprintf("%v/%v.txt", persister.resultDir, response.FrameID))
 			if err != nil {
 				log.Errorf("can't create dir")
@@ -61,6 +77,8 @@ func (persister *Persister) run() {
 				log.Errorf("get wrong msg")
 				return
 			}
+			trackCounter += 1
+
 			f, err := os.Create(fmt.Sprintf("%v/%v.txt", persister.resultDir, trackResult.FrameID))
 			if err != nil {
 				log.Errorf("can't create dir")
@@ -71,6 +89,11 @@ func (persister *Persister) run() {
 			}
 
 			f.Close()
+		case <-ticker.C:
+			fpsFile.WriteString(fmt.Sprintf("%v %v %v\n", detectCounter, trackCounter, detectCounter+trackCounter))
+			detectCounter = 0
+			trackCounter = 0
 		}
+
 	}
 }

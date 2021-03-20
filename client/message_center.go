@@ -75,9 +75,9 @@ func (m *MessageCenter) sendMessage(ch chan Message, msg Message) {
 	case ch <- msg:
 		log.Debugf("send a msg of %v", msg.Topic)
 	// 当开启顺序保证时，下面这串代码有可能阻塞0.5秒的信息
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(1000 * time.Millisecond):
 		m.Unsubscribe(ch)
-		log.Debugf("send message timeout")
+		log.Warnf("send message timeout, msg:%#v", msg)
 	}
 }
 
