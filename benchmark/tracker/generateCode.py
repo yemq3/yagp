@@ -1,4 +1,4 @@
-size = ["10x10", "20x20", "50x50", "100x100"]
+size = ["10x10", "20x20", "50x50", "100x100", "200x200"]
 method = ["KCF", "CSRT", "MIL", "MOSSE", "Boosting", "MedianFlow", "TLD"]
 
 common = """
@@ -18,7 +18,7 @@ func Init(rectangle image.Rectangle, trackingAlgorithm string) (contrib.Tracker,
 	one := gocv.NewMat()
 	two := gocv.NewMat()
 
-	c, err := gocv.VideoCaptureFile("./video.mp4")
+	c, err := gocv.VideoCaptureFile("../video.mp4")
 	if err != nil {
 		log.Errorln(err)
 	}

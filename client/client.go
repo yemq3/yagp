@@ -14,7 +14,7 @@ import (
 )
 
 var addr = flag.String("addr", "127.0.0.1:12345", "Websocket Server Address")
-var trackingMethod = flag.String("t", "KCF", "Tracking Method")
+var trackingMethod = flag.String("t", "MedianFlow", "Tracking Method")
 var frameRate = flag.Int("frameRate", 24, "FrameRate")
 var encodeQuality = flag.Int("encodeQuality", 75, "Encode Quality")
 var interval = flag.Int("interval", 1, "Interval")
@@ -91,8 +91,8 @@ func main() {
 	// }()
 
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
-	// ensureOrder 目前必须设置为true，因为代码很多部分都假设结果是顺序的= =
-	messageCenter := NewMessageCenter(false)
+	// ensureOrder 目前必须设置为true，因为代码很多部分都假设结果是顺序的= =，设成false能跑但是可能会出现问题
+	messageCenter := NewMessageCenter(true)
 	go messageCenter.run()
 	// MessageCenter用来发布Frame, Detection Result, Track Result，Qos等信息
 

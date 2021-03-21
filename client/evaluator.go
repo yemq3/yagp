@@ -103,7 +103,7 @@ func (evaluator *Evaluator) run() {
 				log.Errorf("get wrong msg")
 				return
 			}
-			delay := response.SendTime - frameTime[response.FrameID]
+			delay := response.GetTime - frameTime[response.FrameID]
 			evaluator.DelaysHistory = append(evaluator.DelaysHistory, delay)
 			if !isStart {
 				evaluator.SmoothedDelays = (1-ALPHA)*evaluator.SmoothedDelays + ALPHA*float64(delay)
@@ -195,8 +195,8 @@ func (evaluator *Evaluator) run() {
 			processTime := showAverageTime(evaluator.ProcessTimeHistory, "process time")
 			c2sTime := showAverageTime(evaluator.C2STimeHistory, "client to server time")
 			s2cTime := showAverageTime(evaluator.S2CTimeHistory, "server to client time")
-			// fps := getFPS(encodeTime, trackingTime, processTime, c2sTime, s2cTime)
-			// log.Infof("fps:%v", fps)
+			fps := getFPS(encodeTime, trackingTime, processTime, c2sTime, s2cTime)
+			log.Infof("FPS: %v", fps)
 			log.Infof("--------------Running status of last 1 seconds--------------")
 			log.Infof("--------------Current status of Time --------------")
 			log.Infof("Smoothed Delays: %v, Deviation Delays: %v, Warning Delays: %v", evaluator.SmoothedDelays/1000000000, evaluator.DeviationDelays/1000000000, evaluator.WarningDelays/1000000000)
@@ -236,6 +236,7 @@ func (evaluator *Evaluator) run() {
 				evaluator.SmoothedS2CTime = s2cTime
 				evaluator.DeviationS2CTime = s2cTime / 2
 				evaluator.WarningS2CTime = evaluator.SmoothedS2CTime + K*evaluator.DeviationS2CTime
+				isStart = false
 			}
 		}
 	}

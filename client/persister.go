@@ -27,8 +27,8 @@ func NewPersister(messageCenter MessageCenter, dir string) Persister {
 func (persister *Persister) run() {
 	log.Infof("Persister running...")
 
-	// frameChannel := persister.messageCenter.Subscribe(FilterFrame)
-	// defer persister.messageCenter.Unsubscribe(frameChannel)
+	frameChannel := persister.messageCenter.Subscribe(FilterFrame)
+	defer persister.messageCenter.Unsubscribe(frameChannel)
 
 	responseChannel := persister.messageCenter.Subscribe(NetworkResponse)
 	defer persister.messageCenter.Unsubscribe(responseChannel)
@@ -51,8 +51,17 @@ func (persister *Persister) run() {
 	detectCounter := 0
 	trackCounter := 0
 
+	frameTime := make(map[int]int64)
+
 	for {
 		select {
+		case msg := <- frameChannel:
+			frame, ok := msg.Content.(Frame)
+			if !ok {
+				log.Errorf("get wrong msg")
+				return
+			}
+			frameTime[frame.FrameID] = frame.Timestamp
 		case msg := <-responseChannel:
 			response, ok := msg.Content.(Response)
 			if !ok {
@@ -65,7 +74,8 @@ func (persister *Persister) run() {
 			if err != nil {
 				log.Errorf("can't create dir")
 			}
-			f.WriteString("detect\n")
+			// Method & delay
+			f.WriteString(fmt.Sprintf("detect %v\n", response.GetTime - frameTime[response.FrameID]))
 			for _, box := range response.Boxes {
 				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, box.X1, box.Y1, box.X2, box.Y2))
 			}
@@ -83,7 +93,8 @@ func (persister *Persister) run() {
 			if err != nil {
 				log.Errorf("can't create dir")
 			}
-			f.WriteString("track\n")
+			// Method & delay
+			f.WriteString(fmt.Sprintf("track %v\n", trackResult.DoneTime - frameTime[trackResult.FrameID]))
 			for _, box := range trackResult.Boxes {
 				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, box.X1, box.Y1, box.X2, box.Y2))
 			}

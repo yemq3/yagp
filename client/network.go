@@ -40,6 +40,7 @@ func (network *Network) replyHandler() {
 				log.Errorln(err)
 				return
 			}
+			response.GetTime = time.Now().UnixNano()
 			log.Debugf("recv: %v", response)
 			serverToClientTime := time.Now().UnixNano() - response.SendTime
 
