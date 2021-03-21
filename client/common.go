@@ -16,7 +16,7 @@ type Frame struct {
 type TrackResult struct {
 	FrameID  int
 	Boxes    []Box
-	DoneTime int64
+	DoneTime int64 // 完成跟踪时的时间
 }
 
 // Request ...
@@ -29,10 +29,11 @@ type Request struct {
 // Response ...
 type Response struct {
 	FrameID            int
-	Boxes              []Box
-	ClientToServerTime int64
-	SendTime           int64
-	ProcessTime        int64
+	Boxes              []Box // 检测数据
+	ClientToServerTime int64 // 客户端到服务器端的时间
+	SendTime           int64 // 服务器端发送的时间
+	ProcessTime        int64 // 服务器端处理请求用的时间
+	GetTime            int64 // 客户端收到的时间
 }
 
 // Box 框的定义，其中坐标都是0到1的小数点

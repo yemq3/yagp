@@ -83,6 +83,16 @@ func BenchmarkKCF_100x100(b *testing.B) {
 	}
 }
 
+func BenchmarkKCF_200x200(b *testing.B) {
+	rectangle := image.Rect(10, 10, 210, 210)
+	t, two := Init(rectangle, "KCF")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		t.Update(two)
+	}
+}
+
 func BenchmarkCSRT_10x10(b *testing.B) {
 	rectangle := image.Rect(10, 10, 20, 20)
 	t, two := Init(rectangle, "CSRT")
@@ -115,6 +125,16 @@ func BenchmarkCSRT_50x50(b *testing.B) {
 
 func BenchmarkCSRT_100x100(b *testing.B) {
 	rectangle := image.Rect(10, 10, 110, 110)
+	t, two := Init(rectangle, "CSRT")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		t.Update(two)
+	}
+}
+
+func BenchmarkCSRT_200x200(b *testing.B) {
+	rectangle := image.Rect(10, 10, 210, 210)
 	t, two := Init(rectangle, "CSRT")
 
 	b.ResetTimer()
@@ -163,6 +183,16 @@ func BenchmarkMIL_100x100(b *testing.B) {
 	}
 }
 
+func BenchmarkMIL_200x200(b *testing.B) {
+	rectangle := image.Rect(10, 10, 210, 210)
+	t, two := Init(rectangle, "MIL")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		t.Update(two)
+	}
+}
+
 func BenchmarkMOSSE_10x10(b *testing.B) {
 	rectangle := image.Rect(10, 10, 20, 20)
 	t, two := Init(rectangle, "MOSSE")
@@ -195,6 +225,16 @@ func BenchmarkMOSSE_50x50(b *testing.B) {
 
 func BenchmarkMOSSE_100x100(b *testing.B) {
 	rectangle := image.Rect(10, 10, 110, 110)
+	t, two := Init(rectangle, "MOSSE")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		t.Update(two)
+	}
+}
+
+func BenchmarkMOSSE_200x200(b *testing.B) {
+	rectangle := image.Rect(10, 10, 210, 210)
 	t, two := Init(rectangle, "MOSSE")
 
 	b.ResetTimer()
@@ -243,6 +283,16 @@ func BenchmarkBoosting_100x100(b *testing.B) {
 	}
 }
 
+func BenchmarkBoosting_200x200(b *testing.B) {
+	rectangle := image.Rect(10, 10, 210, 210)
+	t, two := Init(rectangle, "Boosting")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		t.Update(two)
+	}
+}
+
 func BenchmarkMedianFlow_10x10(b *testing.B) {
 	rectangle := image.Rect(10, 10, 20, 20)
 	t, two := Init(rectangle, "MedianFlow")
@@ -283,6 +333,16 @@ func BenchmarkMedianFlow_100x100(b *testing.B) {
 	}
 }
 
+func BenchmarkMedianFlow_200x200(b *testing.B) {
+	rectangle := image.Rect(10, 10, 210, 210)
+	t, two := Init(rectangle, "MedianFlow")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		t.Update(two)
+	}
+}
+
 func BenchmarkTLD_10x10(b *testing.B) {
 	rectangle := image.Rect(10, 10, 20, 20)
 	t, two := Init(rectangle, "TLD")
@@ -315,6 +375,16 @@ func BenchmarkTLD_50x50(b *testing.B) {
 
 func BenchmarkTLD_100x100(b *testing.B) {
 	rectangle := image.Rect(10, 10, 110, 110)
+	t, two := Init(rectangle, "TLD")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		t.Update(two)
+	}
+}
+
+func BenchmarkTLD_200x200(b *testing.B) {
+	rectangle := image.Rect(10, 10, 210, 210)
 	t, two := Init(rectangle, "TLD")
 
 	b.ResetTimer()
