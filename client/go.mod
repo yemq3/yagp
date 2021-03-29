@@ -1,4 +1,4 @@
-module yagp
+module github.com/yemq3/yagp
 
 go 1.15
 

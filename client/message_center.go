@@ -10,8 +10,8 @@ import (
 // 如果需要Publish新的信息，在下面加
 const (
 	FilterFrame        = iota // Frame
-	NetworkResponse           // Response
-	TrackerTrackResult        // TrackResult
+	DetectResult              // DetectResult
+	TrackResult               // TrackResult
 	EncodeTime                // int64(nanosecond)
 	TrackingTime              // int64(nanosecond)
 	ProcessTime               // int64(nanosecond)

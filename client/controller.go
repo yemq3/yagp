@@ -50,7 +50,7 @@ func (controller *Controller) run() {
 		case frame := <-controller.ControllerChannel:
 			if controller.counter == 0 {
 				log.Debugf("Frameid: %v, go to encoder", frame.FrameID)
-				controller.executor.sendEncodeTask(frame, 75, 1)
+				controller.executor.sendEncodeTask(frame, 75, 0.5)
 			} else {
 				log.Debugf("Frameid: %v, go to tracker", frame.FrameID)
 				controller.executor.sendTrackTask(frame)

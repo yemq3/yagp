@@ -67,10 +67,10 @@ func (evaluator *Evaluator) run() {
 	defer evaluator.messageCenter.Unsubscribe(frameChannel)
 	frameTime := make(map[int]int64)
 
-	responseChannel := evaluator.messageCenter.Subscribe(NetworkResponse)
-	defer evaluator.messageCenter.Unsubscribe(responseChannel)
+	detectChannel := evaluator.messageCenter.Subscribe(DetectResult)
+	defer evaluator.messageCenter.Unsubscribe(detectChannel)
 
-	trackingChannel := evaluator.messageCenter.Subscribe(TrackerTrackResult)
+	trackingChannel := evaluator.messageCenter.Subscribe(TrackResult)
 	defer evaluator.messageCenter.Unsubscribe(trackingChannel)
 
 	encodeTimeChannel := evaluator.messageCenter.Subscribe(EncodeTime)
@@ -97,13 +97,13 @@ func (evaluator *Evaluator) run() {
 				return
 			}
 			frameTime[frame.FrameID] = frame.Timestamp
-		case msg := <-responseChannel:
-			response, ok := msg.Content.(Response)
+		case msg := <-detectChannel:
+			response, ok := msg.Content.(ResultWithAbsoluteBox)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
 			}
-			delay := response.GetTime - frameTime[response.FrameID]
+			delay := response.DoneTime - frameTime[response.FrameID]
 			evaluator.DelaysHistory = append(evaluator.DelaysHistory, delay)
 			if !isStart {
 				evaluator.SmoothedDelays = (1-ALPHA)*evaluator.SmoothedDelays + ALPHA*float64(delay)
@@ -112,7 +112,7 @@ func (evaluator *Evaluator) run() {
 			}
 			delete(frameTime, response.FrameID)
 		case msg := <-trackingChannel:
-			trackResult, ok := msg.Content.(TrackResult)
+			trackResult, ok := msg.Content.(ResultWithAbsoluteBox)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
@@ -251,9 +251,9 @@ func showAverageTime(his []int64, name string) float64 {
 	return float64(total) / float64(len(his))
 }
 
-func getFPS(encodeTime, trackingTime, processTime, c2sTime, s2cTime float64) float64{
+func getFPS(encodeTime, trackingTime, processTime, c2sTime, s2cTime float64) float64 {
 	trackFPS := 1 / trackingTime * 1000000000
-	detectFPS := 1 / (encodeTime+processTime+c2sTime+s2cTime) * 1000000000
+	detectFPS := 1 / (encodeTime + processTime + c2sTime + s2cTime) * 1000000000
 
 	return trackFPS + detectFPS
 }

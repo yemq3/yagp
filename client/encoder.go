@@ -29,6 +29,7 @@ type EncodedFrame struct {
 	Frame         []byte
 	FrameID       int
 	EncodeQuality int
+	Size          []int
 }
 
 // func (encoder *Processer) SetEncodeQuality(encodeQuality int){
@@ -61,17 +62,19 @@ func (encoder *Encoder) run() {
 				resizeImg := gocv.NewMat()
 				gocv.Resize(img, &resizeImg, image.Point{}, task.resizeFactor, task.resizeFactor, gocv.InterpolationArea)
 				img = resizeImg
-			} 
+			}
 			buffer, err := gocv.IMEncodeWithParams(task.encodeMethod, img, []int{gocv.IMWriteJpegQuality, task.encodeQuality})
 			encodeTime := time.Now().UnixNano() - start
 			if err != nil {
 				log.Errorln(err)
 				return
 			}
-			encodedFrame := EncodedFrame{}
-			encodedFrame.Frame = buffer
-			encodedFrame.FrameID = task.frame.FrameID
-			encodedFrame.EncodeQuality = task.encodeQuality
+			encodedFrame := EncodedFrame{
+				Frame:         buffer,
+				FrameID:       task.frame.FrameID,
+				EncodeQuality: task.encodeQuality,
+				Size:          img.Size(),
+			}
 			go func(encodedFrame EncodedFrame) {
 				encoder.networkChannel <- encodedFrame
 			}(encodedFrame)
