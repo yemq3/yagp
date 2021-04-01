@@ -15,7 +15,7 @@ import (
 
 var addr = flag.String("addr", "127.0.0.1:12345", "Websocket Server Address")
 var trackingMethod = flag.String("t", "MedianFlow", "Tracking Method")
-var frameRate = flag.Int("frameRate", 24, "FrameRate")
+var frameRate = flag.Int("frameRate", 16, "FrameRate")
 var encodeQuality = flag.Int("encodeQuality", 75, "Encode Quality")
 var interval = flag.Int("interval", 1, "Interval")
 var resultDir = flag.String("resultDir", "./result", "Path to result")
@@ -77,8 +77,10 @@ func runCore(messageCenter MessageCenter) {
 	go controler.run()
 	go encoder.run()
 	go network.run()
-	// go tracker.run()
-	go tracker.runUseLK()
+	if *trackingMethod == "lk"{
+		go tracker.runUseLK(500, 0.01, 10)
+	}
+	go tracker.run()
 
 }
 

@@ -23,6 +23,10 @@ type pointPairs struct {
 }
 
 func NewLKTracker(maxCorners int, quality float64, minDist float64) LKTracker {
+	// 这里的参数都是给GoodFeaturesToTrack的
+	// maxCorners: 最多生成多少个点，0代表不限制
+	// quality: 用来筛选点，比如全部点的最高得分为1500，quality为0.01，则低于15分的会被淘汰
+	// minDist: 如果minDist内有更好的点，那么直接淘汰
 	t := LKTracker{
 		maxCorners: maxCorners,
 		quality:    quality,

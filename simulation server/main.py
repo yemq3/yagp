@@ -34,7 +34,6 @@ def createHandler(bandwidth, delay, processTime):
         while True:
             data = await ws.recv()
 
-
             start = time.time()
             frame = json.loads(data)
             logger.info(
@@ -91,5 +90,5 @@ if __name__ == "__main__":
     # 5g 200mbps 20ms
     # wifi 40mbps 1ms
     # wifi 802.11ac 250mbps 1ms
-    app = createApp(1e10, 0, 0.01)
+    app = createApp(5e7, 0.05, 0.05)
     app.run(host="0.0.0.0", port=12345, protocol=WebSocketProtocol)

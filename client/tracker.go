@@ -20,6 +20,7 @@ var supportTrackingMethod = map[string]struct{}{
 	"Boosting":   {},
 	"MedianFlow": {},
 	"TLD":        {},
+	"lk":         {},
 }
 
 // Tracker 用于实现跟踪算法
@@ -29,7 +30,7 @@ type Tracker struct {
 	trackingAlgorithm string
 	trackers          []trackerWithInfo
 	perviousBoxes     []box.AbsoluteBox
-	lkTracker         lk.LKTracker
+	lkTracker         *lk.LKTracker
 }
 
 type TrackTask struct {
@@ -211,7 +212,7 @@ func (tracker *Tracker) run() {
 	}
 }
 
-func (tracker *Tracker) runUseLK() {
+func (tracker *Tracker) runUseLK(maxCorners int, quality float64, minDist float64) {
 	log.Infof("Tracker running...")
 	frameChannel := tracker.messageCenter.Subscribe(FilterFrame)
 	defer tracker.messageCenter.Unsubscribe(frameChannel)
@@ -237,8 +238,11 @@ func (tracker *Tracker) runUseLK() {
 			}
 
 			start := time.Now().UnixNano()
-			Boxes := tracker.lkTracker.Update(task.frame.Frame)
-			
+			var Boxes []box.AbsoluteBox
+			if tracker.lkTracker != nil {
+				Boxes = tracker.lkTracker.Update(task.frame.Frame)
+			}
+
 			tracker.perviousBoxes = Boxes
 
 			trackingTime := time.Now().UnixNano() - start
@@ -273,14 +277,13 @@ func (tracker *Tracker) runUseLK() {
 				return
 			}
 
-
 			img := frames[response.FrameID]
 			tracker.perviousBoxes = response.Boxes
 
-			t := lk.NewLKTracker(1000, 0.1, 10)
+			t := lk.NewLKTracker(maxCorners, quality, minDist)
 			t.Init(img, response.Boxes)
 
-			tracker.lkTracker = t
+			tracker.lkTracker = &t
 
 			delete(frames, response.FrameID)
 		case msg := <-frameChannel:
