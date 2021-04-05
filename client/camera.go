@@ -16,7 +16,7 @@ type Camera struct {
 	history       map[int]Frame // 存之前的图像
 	latestFrameID int
 
-	// weight    int
+	// width    int
 	// height    int
 	// frameRate int
 }
@@ -38,7 +38,7 @@ func NewCamera(frameRate int, filterChannel chan Frame, video bool, videoFile st
 		return camera, err
 	}
 	// 以下设置不一定生效，得看摄像头支不支持，且Set()不会返回信息，校验的话得另想办法
-	// c.Set(gocv.VideoCaptureFrameWidth, float64(weight))
+	// c.Set(gocv.VideoCaptureFrameWidth, float64(width))
 	//c.Set(gocv.VideoCaptureFrameHeight, float64(height))
 	//c.Set(gocv.VideoCaptureFPS, float64(frameRate))
 	camera.camera = c
@@ -72,6 +72,9 @@ func (camera *Camera) run() {
 			frame.FrameID = camera.latestFrameID
 			frame.Frame = img
 			frame.Timestamp = time.Now().UnixNano()
+
+			WIDTH = img.Size()[1]
+			HEIGHT = img.Size()[0]
 
 			go func(frame Frame) {
 				camera.filterChannel <- frame

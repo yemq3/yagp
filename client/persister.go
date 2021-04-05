@@ -30,10 +30,10 @@ func (persister *Persister) run() {
 	frameChannel := persister.messageCenter.Subscribe(FilterFrame)
 	defer persister.messageCenter.Unsubscribe(frameChannel)
 
-	responseChannel := persister.messageCenter.Subscribe(NetworkResponse)
-	defer persister.messageCenter.Unsubscribe(responseChannel)
+	detectChannel := persister.messageCenter.Subscribe(DetectResult)
+	defer persister.messageCenter.Unsubscribe(detectChannel)
 
-	trackChannel := persister.messageCenter.Subscribe(TrackerTrackResult)
+	trackChannel := persister.messageCenter.Subscribe(TrackResult)
 	defer persister.messageCenter.Unsubscribe(trackChannel)
 
 	err := os.Mkdir(persister.resultDir, 0755)
@@ -55,15 +55,15 @@ func (persister *Persister) run() {
 
 	for {
 		select {
-		case msg := <- frameChannel:
+		case msg := <-frameChannel:
 			frame, ok := msg.Content.(Frame)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
 			}
 			frameTime[frame.FrameID] = frame.Timestamp
-		case msg := <-responseChannel:
-			response, ok := msg.Content.(Response)
+		case msg := <-detectChannel:
+			response, ok := msg.Content.(ResultWithAbsoluteBox)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
@@ -75,14 +75,15 @@ func (persister *Persister) run() {
 				log.Errorf("can't create dir")
 			}
 			// Method & delay
-			f.WriteString(fmt.Sprintf("detect %v\n", response.GetTime - frameTime[response.FrameID]))
+			f.WriteString(fmt.Sprintf("detect %v\n", response.DoneTime-frameTime[response.FrameID]))
 			for _, box := range response.Boxes {
-				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, box.X1, box.Y1, box.X2, box.Y2))
+				relativeBox := box.ToRelativeBox(WIDTH, HEIGHT)
+				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, relativeBox.X1, relativeBox.Y1, relativeBox.X2, relativeBox.Y2))
 			}
 
 			f.Close()
 		case msg := <-trackChannel:
-			trackResult, ok := msg.Content.(TrackResult)
+			trackResult, ok := msg.Content.(ResultWithAbsoluteBox)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
@@ -94,9 +95,10 @@ func (persister *Persister) run() {
 				log.Errorf("can't create dir")
 			}
 			// Method & delay
-			f.WriteString(fmt.Sprintf("track %v\n", trackResult.DoneTime - frameTime[trackResult.FrameID]))
+			f.WriteString(fmt.Sprintf("track %v\n", trackResult.DoneTime-frameTime[trackResult.FrameID]))
 			for _, box := range trackResult.Boxes {
-				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, box.X1, box.Y1, box.X2, box.Y2))
+				relativeBox := box.ToRelativeBox(WIDTH, HEIGHT)
+				f.WriteString(fmt.Sprintf("%v %v %v %v %v %v\n", box.Name, box.Conf, relativeBox.X1, relativeBox.Y1, relativeBox.X2, relativeBox.Y2))
 			}
 
 			f.Close()

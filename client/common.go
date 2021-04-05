@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/yemq3/yagp/box"
 	"gocv.io/x/gocv"
 )
 
@@ -12,11 +13,20 @@ type Frame struct {
 	isDetect  bool
 }
 
-// TrackResult 跟踪结果
-type TrackResult struct {
+// ResultWithRelativeBox 检测/跟踪结果(框为相对值)
+type ResultWithRelativeBox struct {
 	FrameID  int
-	Boxes    []Box
-	DoneTime int64 // 完成跟踪时的时间
+	Boxes    []box.RelativeBox
+	DoneTime int64 // 完成检测/跟踪的时间
+	Method   int
+}
+
+// ResultWithAbsoluteBox 检测/跟踪结果(框为绝对值)
+type ResultWithAbsoluteBox struct {
+	FrameID  int
+	Boxes    []box.AbsoluteBox
+	DoneTime int64 // 完成检测/跟踪的时间
+	Method   int
 }
 
 // Request ...
@@ -29,27 +39,17 @@ type Request struct {
 // Response ...
 type Response struct {
 	FrameID            int
-	Boxes              []Box // 检测数据
-	ClientToServerTime int64 // 客户端到服务器端的时间
-	SendTime           int64 // 服务器端发送的时间
-	ProcessTime        int64 // 服务器端处理请求用的时间
-	GetTime            int64 // 客户端收到的时间
-}
-
-// Box 框的定义，其中坐标都是0到1的小数点
-type Box struct {
-	X1   float64
-	Y1   float64
-	X2   float64
-	Y2   float64
-	Conf float64
-	Name string
+	Boxes              []box.RelativeBox // 检测数据
+	ClientToServerTime int64             // 客户端到服务器端的时间
+	SendTime           int64             // 服务器端发送的时间
+	ProcessTime        int64             // 服务器端处理请求用的时间
+	GetTime            int64             // 客户端收到的时间
 }
 
 type currentFrame struct {
 	frame         gocv.Mat
 	frameID       int
-	Boxes         []Box
+	Boxes         []box.AbsoluteBox
 	method        int
 	resultFrameID int
 }
@@ -59,5 +59,5 @@ const (
 	NONE = iota
 	DETECT
 	TRACK
-	BOTH
+	DROP
 )

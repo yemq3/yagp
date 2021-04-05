@@ -7,6 +7,8 @@ import time
 import json
 import base64
 import logging
+import math
+import random
 
 logger = logging.getLogger(__name__)
 logger.setLevel(level=logging.DEBUG)
@@ -22,18 +24,41 @@ def readb64(data):
     return img
 
 
-def createApp(bandwidth, delay, processTime):
-    app = Sanic("server")
-    handler = createHandler(bandwidth, delay, processTime)
-    app.add_websocket_route(handler, "/")
-    return app
+class SimulationServer:
+    def __init__(self, bandwidth, delay, processTime, simulationMethod, fluctuationRange, frequency, theta):
+        self.app = Sanic("server")
 
+        self.baseBandwidth = bandwidth
+        self.baseDelay = delay
+        self.baseProcessTime = processTime
+        self.simulationMethod = simulationMethod
+        self.fluctuationRange = fluctuationRange
+        self.frequency = frequency
+        self.theta = theta / 360 * 2 * math.pi
 
-def createHandler(bandwidth, delay, processTime):
-    async def detect(request, ws):
+        self.bandwidth = (1 + fluctuationRange[0] * math.sin(theta)) * bandwidth
+        self.delay = (1 + fluctuationRange[1] * math.sin(theta)) * delay
+        self.processTime = (1 + fluctuationRange[2] * math.sin(theta)) * processTime
+
+        assert simulationMethod == "sin" or simulationMethod == "random"
+        assert type(fluctuationRange) == list and len(fluctuationRange) == 3
+        for r in fluctuationRange:
+            assert 0 <= r <= 1
+
+    def update(self):
+        if self.simulationMethod == "sin":
+            self.theta = self.theta + 2 * math.pi / self.frequency
+            self.bandwidth = (1 + self.fluctuationRange[0] * math.sin(self.theta)) * self.baseBandwidth
+            self.delay = (1 + self.fluctuationRange[1] * math.sin(self.theta)) * self.baseDelay
+            self.processTime = (1 + self.fluctuationRange[2] * math.sin(self.theta)) * self.baseProcessTime
+        elif self.simulationMethod == "random":
+            self.bandwidth = self.baseBandwidth * random.uniform(1 - self.fluctuationRange[0], 1 + self.fluctuationRange[0])
+            self.delay = self.baseDelay * random.uniform(1 - self.fluctuationRange[1], 1 + self.fluctuationRange[1])
+            self.processTime = self.baseProcessTime * random.uniform(1 - self.fluctuationRange[2], 1 + self.fluctuationRange[2])
+
+    async def handler(self, request, ws):
         while True:
             data = await ws.recv()
-
 
             start = time.time()
             frame = json.loads(data)
@@ -42,9 +67,12 @@ def createHandler(bandwidth, delay, processTime):
                 len(data),
                 frame["FrameID"],
             )
+            logger.info(f"banwidth: {self.bandwidth}, delay: {self.delay}, process time: {self.processTime}")
+
             client_to_server_time = time.time_ns() - frame["SendTime"]
-            time.sleep(delay)
-            time.sleep(len(data) / bandwidth)
+            # 来回的delay
+            time.sleep(self.delay * 2)
+            time.sleep(len(data) / self.bandwidth)
 
             # img = readb64(frame['Frame'])
             # sized = cv2.resize(img, (darknet.width, darknet.height))
@@ -70,20 +98,24 @@ def createHandler(bandwidth, delay, processTime):
                         "Name": box[5],
                     }
                 )
-            time.sleep(processTime)
+            time.sleep(self.processTime)
 
             response = {
                 "FrameID": frame["FrameID"],
                 "Boxes": formatBoxes,
                 "ClientToServerTime": client_to_server_time,
                 "SendTime": time.time_ns(),
-                "ProcessTime": int(processTime * 1000000000),
+                "ProcessTime": int(self.processTime * 1000000000),
             }
-            logger.info("FrameID: %d, Process Time: %f", frame["FrameID"], processTime)
+            logger.info("FrameID: %d, Process Time: %f", frame["FrameID"], self.processTime)
 
             await ws.send(json.dumps(response))
+            
+            self.update()
 
-    return detect
+    def run(self):
+        self.app.add_websocket_route(self.handler, "/")
+        self.app.run(host="0.0.0.0", port=12345, protocol=WebSocketProtocol)
 
 
 if __name__ == "__main__":
@@ -91,5 +123,5 @@ if __name__ == "__main__":
     # 5g 200mbps 20ms
     # wifi 40mbps 1ms
     # wifi 802.11ac 250mbps 1ms
-    app = createApp(1e10, 0, 0.01)
-    app.run(host="0.0.0.0", port=12345, protocol=WebSocketProtocol)
+    simulationServer = SimulationServer(5e7, 0.0, 0.0, "sin", [0.2, 0, 0], 10, 0)
+    simulationServer.run()

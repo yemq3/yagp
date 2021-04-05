@@ -40,16 +40,9 @@ func display(frame currentFrame, window *gocv.Window) {
 
 	copyFrame := gocv.NewMat()
 	frame.frame.CopyTo(&copyFrame)
-	height := copyFrame.Size()[0]
-	weight := copyFrame.Size()[1]
 
 	for _, box := range frame.Boxes {
-		x0 := max(int(box.X1*float64(weight)), 0)
-		y0 := max(int(box.Y1*float64(height)), 0)
-		x1 := min(int(box.X2*float64(weight)), weight)
-		y1 := min(int(box.Y2*float64(height)), height)
-		rect := image.Rect(x0, y0, x1, y1)
-		gocv.Rectangle(&copyFrame, rect, red, 2)
+		gocv.Rectangle(&copyFrame, box.Rect, red, 2)
 	}
 
 	if frame.resultFrameID <= frame.frameID {

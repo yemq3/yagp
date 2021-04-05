@@ -15,10 +15,15 @@ import (
 
 var addr = flag.String("addr", "127.0.0.1:12345", "Websocket Server Address")
 var trackingMethod = flag.String("t", "MedianFlow", "Tracking Method")
-var frameRate = flag.Int("frameRate", 24, "FrameRate")
+var frameRate = flag.Int("frameRate", 16, "FrameRate")
 var encodeQuality = flag.Int("encodeQuality", 75, "Encode Quality")
 var interval = flag.Int("interval", 1, "Interval")
 var resultDir = flag.String("resultDir", "./result", "Path to result")
+
+var (
+	WIDTH = 0
+	HEIGHT = 0
+)
 
 func runCore(messageCenter MessageCenter) {
 	// 持久层
@@ -72,6 +77,9 @@ func runCore(messageCenter MessageCenter) {
 	go controler.run()
 	go encoder.run()
 	go network.run()
+	if *trackingMethod == "lk"{
+		go tracker.runUseLK(500, 0.01, 10)
+	}
 	go tracker.run()
 
 }
@@ -117,10 +125,10 @@ func main() {
 	frameChannel := messageCenter.Subscribe(FilterFrame)
 	defer messageCenter.Unsubscribe(frameChannel)
 
-	responseChannel := messageCenter.Subscribe(NetworkResponse)
-	defer messageCenter.Unsubscribe(responseChannel)
+	detectChannel := messageCenter.Subscribe(DetectResult)
+	defer messageCenter.Unsubscribe(detectChannel)
 
-	trackingChannel := messageCenter.Subscribe(TrackerTrackResult)
+	trackingChannel := messageCenter.Subscribe(TrackResult)
 	defer messageCenter.Unsubscribe(trackingChannel)
 
 	var currentFrame currentFrame
@@ -136,7 +144,7 @@ func main() {
 			currentFrame.frame = frame.Frame
 			currentFrame.frameID = frame.FrameID
 			display(currentFrame, window)
-		case msg := <-responseChannel:
+		case msg := <-detectChannel:
 		priority:
 			for {
 				select {
@@ -153,7 +161,7 @@ func main() {
 					break priority
 				}
 			}
-			response, ok := msg.Content.(Response)
+			response, ok := msg.Content.(ResultWithAbsoluteBox)
 			if !ok {
 				log.Errorf("get wrong msg")
 				return
@@ -179,7 +187,7 @@ func main() {
 					break priority2
 				}
 			}
-			trackResult, ok := msg.Content.(TrackResult)
+			trackResult, ok := msg.Content.(ResultWithAbsoluteBox)
 			if !ok {
 				log.Errorf("wrong msg")
 				return

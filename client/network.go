@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
+	"github.com/yemq3/yagp/box"
 )
 
 // Network ...
@@ -40,13 +41,23 @@ func (network *Network) replyHandler() {
 				log.Errorln(err)
 				return
 			}
-			response.GetTime = time.Now().UnixNano()
 			log.Debugf("recv: %v", response)
 			serverToClientTime := time.Now().UnixNano() - response.SendTime
 
+			boxes := make([]box.AbsoluteBox, 0)
+			for _, box := range response.Boxes {
+				boxes = append(boxes, box.ToAbsoluteBox(WIDTH, HEIGHT))
+			}
+			detectResult := ResultWithAbsoluteBox{
+				FrameID:  response.FrameID,
+				Boxes:    boxes,
+				DoneTime: time.Now().UnixNano(),
+				Method:   DETECT,
+			}
+
 			msg := Message{
-				Topic:   NetworkResponse,
-				Content: response,
+				Topic:   DetectResult,
+				Content: detectResult,
 			}
 			network.messageCenter.Publish(msg)
 
@@ -72,7 +83,7 @@ func (network *Network) replyHandler() {
 }
 
 // NewNetwork create a new network
-func NewNetwork (addr url.URL, messageCenter MessageCenter) (Network, error) {
+func NewNetwork(addr url.URL, messageCenter MessageCenter) (Network, error) {
 	network := Network{}
 
 	dialer := websocket.DefaultDialer
@@ -104,10 +115,11 @@ func (network *Network) send() {
 		select {
 		case frame := <-network.NetworkChannel:
 			log.Debugf("get a new image to send")
-			request := Request{}
-			request.FrameID = frame.FrameID
-			request.Frame = frame.Frame
-			request.SendTime = time.Now().UnixNano()
+			request := Request{
+				FrameID:  frame.FrameID,
+				Frame:    frame.Frame,
+				SendTime: time.Now().UnixNano(),
+			}
 
 			err := network.conn.WriteJSON(request)
 
