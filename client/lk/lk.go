@@ -22,12 +22,12 @@ type pointPairs struct {
 	Point2 []image.Point
 }
 
-func NewLKTracker(maxCorners int, quality float64, minDist float64) LKTracker {
+func NewLKTracker(maxCorners int, quality float64, minDist float64) *LKTracker {
 	// 这里的参数都是给GoodFeaturesToTrack的
 	// maxCorners: 最多生成多少个点，0代表不限制
 	// quality: 用来筛选点，比如全部点的最高得分为1500，quality为0.01，则低于15分的会被淘汰
 	// minDist: 如果minDist内有更好的点，那么直接淘汰
-	t := LKTracker{
+	t := &LKTracker{
 		maxCorners: maxCorners,
 		quality:    quality,
 		minDist:    minDist,
@@ -111,6 +111,7 @@ func (t *LKTracker) Update(nextImg gocv.Mat) []box.AbsoluteBox {
 		newRect := b.Rect.Add(shiftVector)
 		newBoxes = append(newBoxes, box.AbsoluteBox{
 			Rect: newRect,
+			UUID: b.UUID,
 			Conf: b.Conf,
 			Name: b.Name,
 		})
@@ -118,68 +119,3 @@ func (t *LKTracker) Update(nextImg gocv.Mat) []box.AbsoluteBox {
 
 	return newBoxes
 }
-
-// func main() {
-
-// 	c, err := gocv.VideoCaptureFile("../../benchmark/video.mp4")
-// 	if err != nil {
-// 		log.Errorf("err: %v", err)
-// 	}
-// 	width := c.Get(gocv.VideoCaptureFrameWidth)
-// 	height := c.Get(gocv.VideoCaptureFrameHeight)
-// 	log.Infof("width: %v, height: %v", width, height)
-// 	first := gocv.NewMat()
-// 	seconds := gocv.NewMat()
-// 	c.Read(&first)
-// 	c.Read(&seconds)
-
-// 	grayFirst := gocv.NewMat()
-// 	graySecond := gocv.NewMat()
-// 	gocv.CvtColor(first, &grayFirst, gocv.ColorBGRToGray)
-// 	gocv.CvtColor(seconds, &graySecond, gocv.ColorBGRToGray)
-
-// 	// sift := gocv.NewSIFT()
-
-// 	start := time.Now().UnixNano()
-// 	kp1 := gocv.NewMat()
-// 	kp2 := gocv.NewMat()
-// 	gocv.GoodFeaturesToTrack(grayFirst, &kp1, POINT_NUM, 0.01, 10)
-// 	gocv.GoodFeaturesToTrack(graySecond, &kp2, POINT_NUM, 0.01, 10)
-// 	log.Infof("used time %v", time.Now().UnixNano()-start)
-// 	kp1Slice := kp1.GetVecfAt(2, 2)
-// 	log.Infof("kp1: %v", kp1Slice)
-
-// 	status := gocv.NewMat()
-// 	flowErr := gocv.NewMat()
-
-// 	start = time.Now().UnixNano()
-// 	gocv.CalcOpticalFlowPyrLK(grayFirst, graySecond, kp1, kp2, &status, &flowErr)
-// 	log.Infof("flow use time: %v", time.Now().UnixNano()-start)
-
-// 	window := gocv.NewWindow("display")
-// 	defer window.Close()
-
-// 	for i := 0; i < POINT_NUM; i++ {
-// 		point := kp1.GetVecfAt(i, 0)
-// 		gocv.Circle(&first, image.Point{int(point[0]), int(point[1])}, 1, color.RGBA{255, 0, 0, 0}, 3)
-// 	}
-// 	window.IMShow(first)
-// 	window.WaitKey(0)
-
-// 	bytesStatus := status.ToBytes()
-// 	for i := 0; i < POINT_NUM; i++ {
-// 		if bytesStatus[i] == 1 {
-// 			point := kp1.GetVecfAt(i, 0)
-// 			point1 := image.Point{int(point[0]), int(point[1])}
-// 			point = kp2.GetVecfAt(i, 0)
-// 			point2 := image.Point{int(point[0]), int(point[1])}
-// 			gocv.Line(&seconds, point1, point2, color.RGBA{255, 0, 0, 0}, 3)
-// 		}
-// 	}
-// 	window.IMShow(seconds)
-// 	window.WaitKey(0)
-
-// 	log.Infof("status: %v", status.ToBytes())
-// 	log.Infof("err: %v", flowErr.ToBytes())
-
-// }
