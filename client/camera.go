@@ -39,12 +39,14 @@ func NewCamera(frameRate int, filterChannel chan Frame, video bool, videoFile st
 	}
 	// 以下设置不一定生效，得看摄像头支不支持，且Set()不会返回信息，校验的话得另想办法
 	// c.Set(gocv.VideoCaptureFrameWidth, float64(width))
-	//c.Set(gocv.VideoCaptureFrameHeight, float64(height))
-	//c.Set(gocv.VideoCaptureFPS, float64(frameRate))
+	// c.Set(gocv.VideoCaptureFrameHeight, float64(height))
+	// c.Set(gocv.VideoCaptureFPS, float64(frameRate))
 	camera.camera = c
 	camera.frameRate = frameRate
 	camera.filterChannel = filterChannel
 	camera.latestFrameID = 0
+	WIDTH = int(c.Get(gocv.VideoCaptureFrameWidth))
+	HEIGHT = int(c.Get(gocv.VideoCaptureFrameHeight))
 
 	return camera, nil
 }
@@ -69,12 +71,9 @@ func (camera *Camera) run() {
 			}
 			camera.latestFrameID++
 			frame := Frame{}
-			frame.FrameID = camera.latestFrameID
+			frame.FrameID = camera.latestFrameID // frameID从1开始
 			frame.Frame = img
 			frame.Timestamp = time.Now().UnixNano()
-
-			WIDTH = img.Size()[1]
-			HEIGHT = img.Size()[0]
 
 			go func(frame Frame) {
 				camera.filterChannel <- frame

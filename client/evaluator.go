@@ -17,6 +17,7 @@ const (
 // Evaluator 计算性能数据
 type Evaluator struct {
 	messageCenter MessageCenter
+	LatestFrameID int
 	// 存储过去n秒的数据
 	DelaysHistory       []int64 // 发送检测到收到结果的时间
 	EncodeTimeHistory   []int64 // 编码时间
@@ -97,6 +98,7 @@ func (evaluator *Evaluator) run() {
 				return
 			}
 			frameTime[frame.FrameID] = frame.Timestamp
+			evaluator.LatestFrameID = frame.FrameID
 		case msg := <-detectChannel:
 			response, ok := msg.Content.(ResultWithAbsoluteBox)
 			if !ok {

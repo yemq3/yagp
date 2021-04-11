@@ -54,11 +54,13 @@ func (mq *MQ) Subscribe(topic Topic) chan Message{
 	if err != nil {
 		log.Errorln(err)
 	}
+	ch := make(chan Message, 100)
 	s.Connect(fmt.Sprintf("tcp://localhost:%v", mq.port))
 	s.SetSubscribe("")
 	// go func(){
 	// 	s.RecvMessage()
 	// }
+	return ch
 }
 
 func (mq *MQ) Unsubscribe() {

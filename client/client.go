@@ -55,7 +55,7 @@ func runCore(messageCenter MessageCenter) {
 	// 初始化Tracker
 
 	// 初始化Processer
-	controler := NewController(messageCenter, encoder.EncoderChannel, tracker.TrackerChannel, *interval)
+	controler := NewController(messageCenter, encoder.EncoderChannel, tracker.TrackerChannel, tracker.UpdateChannel, *interval)
 	// 初始化Processer
 
 	// 初始化Filter
@@ -77,9 +77,6 @@ func runCore(messageCenter MessageCenter) {
 	go controler.run()
 	go encoder.run()
 	go network.run()
-	if *trackingMethod == "lk"{
-		go tracker.runUseLK(500, 0.01, 10)
-	}
 	go tracker.run()
 
 }

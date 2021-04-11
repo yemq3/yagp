@@ -2,10 +2,13 @@ package box
 
 import (
 	"image"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 // RelativeBox 神经网络返回的原始框数据，其中坐标都是0到1的float
 type RelativeBox struct {
+	UUID uuid.UUID
 	X1   float64
 	Y1   float64
 	X2   float64
@@ -16,6 +19,7 @@ type RelativeBox struct {
 
 // AbsoluteBox 坐标用整数表示的AbsoluteBox
 type AbsoluteBox struct {
+	UUID uuid.UUID
 	Rect image.Rectangle
 	Conf float64
 	Name string
@@ -70,4 +74,3 @@ func (b *AbsoluteBox) ToRelativeBox(width, height int) RelativeBox {
 	}
 	return box
 }
-

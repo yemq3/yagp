@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/yemq3/yagp/box"
 )
@@ -46,7 +47,9 @@ func (network *Network) replyHandler() {
 
 			boxes := make([]box.AbsoluteBox, 0)
 			for _, box := range response.Boxes {
-				boxes = append(boxes, box.ToAbsoluteBox(WIDTH, HEIGHT))
+				abbox := box.ToAbsoluteBox(WIDTH, HEIGHT)
+				abbox.UUID = uuid.NewV4()
+				boxes = append(boxes, abbox)
 			}
 			detectResult := ResultWithAbsoluteBox{
 				FrameID:  response.FrameID,
